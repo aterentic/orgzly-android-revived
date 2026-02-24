@@ -59,6 +59,7 @@ jobs:
         # TODO: Run on lowest and highest supported API
         api-level: [29, 35]
         flavor: [Fdroid, Premium]
+        shard: [0, 1]
     steps:
       - name: checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -129,12 +130,12 @@ jobs:
           disable-spellchecker: true
           profile: Nexus 6
           # Tests should use the build which includes Dropbox code.
-          script: ./gradlew --no-configuration-cache connected${{matrix.flavor}}DebugAndroidTest --no-watch-fs --build-cache --info || { ./gradlew pullScreenshot; exit 1; }
+          script: ./gradlew --no-configuration-cache connected${{matrix.flavor}}DebugAndroidTest --no-watch-fs --build-cache --info -Pandroid.testInstrumentationRunnerArguments.numShards=2 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{matrix.shard}} || { ./gradlew pullScreenshot; exit 1; }
 
       - name: Upload screenshot
         if: failure()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: screenshot
+          name: screenshot-${{ matrix.api-level }}-${{ matrix.flavor }}-shard${{ matrix.shard }}
           path: ./build/fail-screenshot-*.png
           if-no-files-found: ignore
