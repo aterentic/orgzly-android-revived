@@ -15,6 +15,8 @@ import static com.orgzly.android.espresso.util.EspressoUtils.onItemInAgenda;
 import static com.orgzly.android.espresso.util.EspressoUtils.onNotesInAgenda;
 import static com.orgzly.android.espresso.util.EspressoUtils.recyclerViewItemCount;
 import static com.orgzly.android.espresso.util.EspressoUtils.searchForTextCloseKeyboard;
+import static com.orgzly.android.espresso.util.EspressoUtils.waitId;
+import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
@@ -248,6 +250,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
                         tomorrow.getMonthOfYear(),
                         tomorrow.getDayOfMonth()));
         onView(withText(android.R.string.ok)).perform(click());
+        // Sleep needed for dialog focus transfer — no observable view state change to wait for
         SystemClock.sleep(500);
         onView(withText(R.string.set)).perform(click());
         onNotesInAgenda().check(matches(recyclerViewItemCount(21)));
@@ -260,7 +263,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
         searchForTextCloseKeyboard(".it.done ad.7");
         onNotesInAgenda().check(matches(recyclerViewItemCount(22)));
 
-        SystemClock.sleep(500);
+        onView(isRoot()).perform(waitId(R.id.fragment_query_agenda_recycler_view, 5000));
         scenario.onActivity(activity ->
                 activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
 
@@ -330,7 +333,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
 
         onItemInAgenda(1).perform(click());
 
-        SystemClock.sleep(500);
+        onView(isRoot()).perform(waitId(R.id.scroll_view, 5000));
         onView(withId(R.id.scroll_view)).check(matches(isDisplayed()));
         onView(withId(R.id.title_view)).check(matches(withText("Note A")));
     }
@@ -364,7 +367,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
         scenario = ActivityScenario.launch(MainActivity.class);
         searchForTextCloseKeyboard("ad.1");
         // today, note (scheduled)
-        SystemClock.sleep(500);
+        onView(isRoot()).perform(waitId(R.id.fragment_query_agenda_recycler_view, 5000));
         onNotesInAgenda().check(matches(recyclerViewItemCount(2)));
     }
 

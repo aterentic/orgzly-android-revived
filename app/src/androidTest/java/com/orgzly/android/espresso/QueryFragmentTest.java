@@ -27,6 +27,7 @@ import static com.orgzly.android.espresso.util.EspressoUtils.recyclerViewItemCou
 import static com.orgzly.android.espresso.util.EspressoUtils.replaceTextCloseKeyboard;
 import static com.orgzly.android.espresso.util.EspressoUtils.scroll;
 import static com.orgzly.android.espresso.util.EspressoUtils.searchForTextCloseKeyboard;
+import static com.orgzly.android.espresso.util.EspressoUtils.waitForView;
 import static com.orgzly.android.espresso.util.EspressoUtils.waitId;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
@@ -38,7 +39,6 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assume.assumeTrue;
 
 import android.icu.util.Calendar;
-import android.os.SystemClock;
 import android.widget.DatePicker;
 import android.widget.TextView;
 import android.widget.TimePicker;
@@ -215,7 +215,6 @@ public class QueryFragmentTest extends OrgzlyTest {
         onView(withId(R.id.date_picker_button)).perform(click());
         onView(withClassName(equalTo(DatePicker.class.getName()))).perform(setDate(2014, 4, 1));
         onView(withText(android.R.string.ok)).perform(click());
-        SystemClock.sleep(500);
         onView(isRoot()).perform(waitId(R.id.time_picker_button, 5000));
         onView(withId(R.id.time_picker_button)).perform(scroll(), click());
         onView(withClassName(equalTo(TimePicker.class.getName()))).perform(setTime(9, 15));
@@ -392,7 +391,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     public void testNoNotesFoundMessageIsDisplayedInSearch() {
         scenario = ActivityScenario.launch(MainActivity.class);
         searchForTextCloseKeyboard("Note");
-        SystemClock.sleep(200);
+        onView(isRoot()).perform(waitForView(withText(R.string.no_notes_found_after_search), 5000));
         onView(withText(R.string.no_notes_found_after_search)).check(matches(isDisplayed()));
     }
 
@@ -492,7 +491,7 @@ public class QueryFragmentTest extends OrgzlyTest {
         // Click on the saved search
         onView(withText("My Search")).perform(click());
 
-        SystemClock.sleep(200);
+        onView(isRoot()).perform(waitId(R.id.fragment_query_search_recycler_view, 5000));
 
         // Verify SearchFragment is displayed
         onView(withId(R.id.fragment_query_search_recycler_view)).check(matches(isDisplayed()));

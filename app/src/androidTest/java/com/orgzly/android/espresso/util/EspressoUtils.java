@@ -7,6 +7,7 @@ import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.pressKey;
 import static androidx.test.espresso.action.ViewActions.replaceText;
+import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.contrib.DrawerActions.close;
 import static androidx.test.espresso.contrib.DrawerActions.open;
 import static androidx.test.espresso.matcher.ViewMatchers.hasDescendant;
@@ -62,7 +63,15 @@ import org.hamcrest.TypeSafeMatcher;
 
 import java.io.File;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
+
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
+
+import com.orgzly.android.App;
+import com.orgzly.android.sync.SyncRunner;
 
 /*
  * Few espresso-related notes:
@@ -196,7 +205,6 @@ public class EspressoUtils {
     }
 
     public static ViewInteraction onRecyclerViewItem(@IdRes int recyclerView, int position, @IdRes int childView) {
-        SystemClock.sleep(200);
         onView(isRoot()).perform(waitId(recyclerView, 5000));
         onView(withId(recyclerView)).perform(RecyclerViewActions.scrollToPosition(position));
         return onView(new EspressoRecyclerViewMatcher(recyclerView)
@@ -347,14 +355,14 @@ public class EspressoUtils {
     }
 
     public static void searchForTextCloseKeyboard(String str) {
-        SystemClock.sleep(300);
+        SystemClock.sleep(100);
         onView(isRoot()).perform(waitId(R.id.search_view, 5000));
         onView(allOf(withId(R.id.search_view), isDisplayed())).perform(click());
-        SystemClock.sleep(300);
+        SystemClock.sleep(100);
         onView(isRoot()).perform(waitId(R.id.search_src_text, 5000));
         onView(withId(R.id.search_src_text)).perform(replaceText(str), pressKey(KeyEvent.KEYCODE_ENTER));
         closeSoftKeyboardWithDelay();
-        SystemClock.sleep(300);
+        SystemClock.sleep(100);
     }
 
     public static ViewAction[] replaceTextCloseKeyboard(String str) {
@@ -472,11 +480,11 @@ public class EspressoUtils {
     }
 
     /**
-     * Perform action of waiting for a specific view id. Copied from https://stackoverflow.com/a/49814995.
-     * @param viewId The id of the view to wait for.
+     * Perform action of waiting for a view matching the given matcher.
+     * @param viewMatcher The matcher for the view to wait for.
      * @param millis The timeout of until when to wait for.
      */
-    public static ViewAction waitId(final int viewId, final long millis) {
+    public static ViewAction waitForView(final Matcher<View> viewMatcher, final long millis) {
         return new ViewAction() {
             @Override
             public Matcher<View> getConstraints() {
@@ -485,7 +493,7 @@ public class EspressoUtils {
 
             @Override
             public String getDescription() {
-                return "wait for a specific view with id <" + viewId + "> during " + millis + " millis.";
+                return "wait for view matching <" + viewMatcher + "> during " + millis + " millis.";
             }
 
             @Override
@@ -493,11 +501,9 @@ public class EspressoUtils {
                 uiController.loopMainThreadUntilIdle();
                 final long startTime = System.currentTimeMillis();
                 final long endTime = startTime + millis;
-                final Matcher<View> viewMatcher = withId(viewId);
 
                 do {
                     for (View child : TreeIterables.breadthFirstViewTraversal(view)) {
-                        // found view with required ID
                         if (viewMatcher.matches(child)) {
                             return;
                         }
@@ -515,6 +521,69 @@ public class EspressoUtils {
                         .build();
             }
         };
+    }
+
+    /**
+     * Perform action of waiting for a specific view id.
+     * @param viewId The id of the view to wait for.
+     * @param millis The timeout of until when to wait for.
+     */
+    public static ViewAction waitId(final int viewId, final long millis) {
+        return waitForView(withId(viewId), millis);
+    }
+
+    /**
+     * Poll from the instrumentation thread until a view is displayed.
+     * Unlike {@link #waitForView}, each iteration makes a fresh {@code onView()} call
+     * that picks the current root — safe across activity recreation (rotation) and
+     * dialog focus transitions.
+     */
+    public static void waitUntilDisplayed(final Matcher<View> viewMatcher, final long millis) {
+        final long endTime = System.currentTimeMillis() + millis;
+        while (System.currentTimeMillis() < endTime) {
+            try {
+                onView(viewMatcher).check(matches(isDisplayed()));
+                return;
+            } catch (Exception | AssertionError e) {
+                SystemClock.sleep(50);
+            }
+        }
+        // Final attempt — let the real error propagate
+        onView(viewMatcher).check(matches(isDisplayed()));
+    }
+
+    /**
+     * Block the current thread until the condition is met or timeout expires.
+     * Polls every 50ms. Safe to call from the instrumentation thread.
+     */
+    public static void waitForCondition(Supplier<Boolean> condition, long millis) {
+        final long endTime = System.currentTimeMillis() + millis;
+        while (System.currentTimeMillis() < endTime) {
+            if (condition.get()) {
+                return;
+            }
+            SystemClock.sleep(50);
+        }
+        throw new AssertionError("Condition not met within " + millis + "ms");
+    }
+
+    /**
+     * Block until WorkManager's sync work reaches a terminal state.
+     * Safe to call from the instrumentation thread.
+     */
+    public static void waitForSyncToFinish(long millis) {
+        WorkManager workManager = WorkManager.getInstance(App.getAppContext());
+        waitForCondition(() -> {
+            try {
+                List<WorkInfo> workInfos = workManager
+                        .getWorkInfosForUniqueWork(SyncRunner.UNIQUE_WORK_NAME)
+                        .get();
+                return workInfos.isEmpty()
+                        || workInfos.stream().allMatch(info -> info.getState().isFinished());
+            } catch (Exception e) {
+                return false;
+            }
+        }, millis);
     }
 
     public static void grantAlarmsAndRemindersSpecialPermission() {

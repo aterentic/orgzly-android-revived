@@ -29,6 +29,10 @@ import static com.orgzly.android.espresso.util.EspressoUtils.scroll;
 import static com.orgzly.android.espresso.util.EspressoUtils.searchForTextCloseKeyboard;
 import static com.orgzly.android.espresso.util.EspressoUtils.settingsSetDoneKeywords;
 import static com.orgzly.android.espresso.util.EspressoUtils.settingsSetTodoKeywords;
+import static com.orgzly.android.espresso.util.EspressoUtils.waitForView;
+import static com.orgzly.android.espresso.util.EspressoUtils.waitId;
+import static com.orgzly.android.espresso.util.EspressoUtils.waitUntilDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -238,14 +242,14 @@ public class MiscTest extends OrgzlyTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity ->
                     activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
-            SystemClock.sleep(500);
+            onView(isRoot()).perform(waitId(R.id.fab, 5000));
             onView(withId(R.id.fab)).perform(click());
             onView(withId(R.id.dialog_new_book_container)).check(matches(isDisplayed()));
 
             scenario.onActivity(activity ->
                     activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
 
-            SystemClock.sleep(1000);
+            onView(isRoot()).perform(waitId(R.id.dialog_new_book_container, 5000));
             onView(withId(R.id.dialog_new_book_container)).check(matches(isDisplayed()));
             onView(withId(R.id.dialog_input)).perform(replaceTextCloseKeyboard("notebook"));
             onView(withText(R.string.create)).perform(click());
@@ -364,7 +368,7 @@ public class MiscTest extends OrgzlyTest {
         try (ActivityScenario<MainActivity> ignored = ActivityScenario.launch(MainActivity.class)) {
             settingsSetDoneKeywords("DONE OLD");
 
-            SystemClock.sleep(500);
+            onView(isRoot()).perform(waitForView(allOf(withText("book-name"), isDisplayed()), 5000));
             onView(allOf(withText("book-name"), isDisplayed())).perform(click());
 
             onNoteInBook(1).perform(click());
@@ -469,7 +473,7 @@ public class MiscTest extends OrgzlyTest {
 
             // Search results
             onView(withId(R.id.drawer_layout)).perform(open());
-            SystemClock.sleep(500);
+            onView(isRoot()).perform(waitForView(allOf(withText("Scheduled"), isDisplayed()), 5000));
             onView(withText("Scheduled")).perform(click());
             fragmentTest(activity, true, withId(R.id.fragment_query_search_view_flipper));
 
@@ -505,29 +509,27 @@ public class MiscTest extends OrgzlyTest {
     }
 
     private void fragmentTest(Activity activity, boolean hasSearchMenuItem, Matcher<View> matcher) {
-        SystemClock.sleep(500);
-        onView(matcher).check(matches(isDisplayed()));
+        waitUntilDisplayed(matcher, 5000);
 
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        SystemClock.sleep(500);
-        onView(matcher).check(matches(isDisplayed()));
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        SystemClock.sleep(500);
-        onView(matcher).check(matches(isDisplayed()));
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        SystemClock.sleep(500);
-        onView(matcher).check(matches(isDisplayed()));
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        SystemClock.sleep(500);
-        onView(matcher).check(matches(isDisplayed()));
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        SystemClock.sleep(500);
+        rotateAndWait(activity, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, matcher);
+        rotateAndWait(activity, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, matcher);
+        rotateAndWait(activity, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, matcher);
+        rotateAndWait(activity, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, matcher);
+        rotateAndWait(activity, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, matcher);
 
         if (hasSearchMenuItem) {
             onView(withId(R.id.search_view)).check(matches(isDisplayed()));
         } else {
             onView(withId(R.id.search_view)).check(doesNotExist());
         }
+    }
+
+    private void rotateAndWait(Activity activity, int orientation, Matcher<View> matcher) {
+        activity.setRequestedOrientation(orientation);
+        // Brief sleep to ensure the rotation config-change message arrives from WindowManager
+        // before polling — without this, waitUntilDisplayed matches the pre-rotation view
+        SystemClock.sleep(200);
+        waitUntilDisplayed(matcher, 5000);
     }
 
     @Test
