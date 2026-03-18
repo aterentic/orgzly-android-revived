@@ -305,8 +305,12 @@ class ShareActivityTest : OrgzlyTest() {
 
         scenario.onActivity { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+        SystemClock.sleep(500)
+        scenario.onActivity { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
+        SystemClock.sleep(500)
 
         setNoteTitle()
         onView(withId(R.id.done)).perform(click()) // Note done

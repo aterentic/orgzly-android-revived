@@ -24,9 +24,14 @@ import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.endsWith
 import org.joda.time.DateTime
 import org.junit.After
+import org.junit.Rule
 import org.junit.Test
+import com.orgzly.android.RetryTestRule
 
 class AgendaSortingTest : OrgzlyTest() {
+    @get:Rule
+    val retryTestRule = RetryTestRule()
+
     private lateinit var scenario: ActivityScenario<MainActivity>
 
     private fun getToday(): String {

@@ -1,6 +1,7 @@
 package com.orgzly.android.espresso
 
 import android.content.pm.ActivityInfo
+import android.os.SystemClock
 import android.widget.DatePicker
 import android.widget.TextView
 import android.widget.TimePicker
@@ -497,8 +498,12 @@ class NoteFragmentTest : OrgzlyTest() {
 
         scenario.onActivity { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+        SystemClock.sleep(500)
+        scenario.onActivity { activity ->
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
+        SystemClock.sleep(500)
 
         onView(withId(R.id.scroll_view)).perform(swipeUp()) // For small screens
         onView(isRoot()).perform(waitId(R.id.name, 5000))

@@ -242,13 +242,14 @@ public class MiscTest extends OrgzlyTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity ->
                     activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
+            SystemClock.sleep(500);
             onView(isRoot()).perform(waitId(R.id.fab, 5000));
             onView(withId(R.id.fab)).perform(click());
             onView(withId(R.id.dialog_new_book_container)).check(matches(isDisplayed()));
 
             scenario.onActivity(activity ->
                     activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
-
+            SystemClock.sleep(500);
             onView(isRoot()).perform(waitId(R.id.dialog_new_book_container, 5000));
             onView(withId(R.id.dialog_new_book_container)).check(matches(isDisplayed()));
             onView(withId(R.id.dialog_input)).perform(replaceTextCloseKeyboard("notebook"));
