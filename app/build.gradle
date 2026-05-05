@@ -175,6 +175,7 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$versions.android_lifecycle"
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:$versions.android_lifecycle")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:$versions.android_lifecycle")
+    implementation("androidx.lifecycle:lifecycle-process:$versions.android_lifecycle")
 
     implementation "androidx.work:work-runtime-ktx:$versions.android_workmanager"
 

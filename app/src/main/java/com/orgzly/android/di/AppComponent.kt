@@ -4,6 +4,7 @@ import com.orgzly.android.NewNoteBroadcastReceiver
 import com.orgzly.android.NotificationBroadcastReceiver
 import com.orgzly.android.SharingShortcutsManager
 import com.orgzly.android.TimeChangeBroadcastReceiver
+import com.orgzly.android.data.observers.DataChangedSignal
 import com.orgzly.android.di.module.ApplicationModule
 import com.orgzly.android.di.module.DataModule
 import com.orgzly.android.di.module.DatabaseModule
@@ -108,4 +109,6 @@ interface AppComponent {
     fun inject(arg: NotificationBroadcastReceiver)
     fun inject(arg: SharingShortcutsManager)
     fun inject(arg: ExternalAccessActionHandler)
+
+    fun dataChangedSignal(): DataChangedSignal
 }
