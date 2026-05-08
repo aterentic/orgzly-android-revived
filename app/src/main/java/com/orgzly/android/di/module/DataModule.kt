@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import com.orgzly.android.db.OrgzlyDatabase
 import com.orgzly.android.repos.RepoFactory
 import com.orgzly.android.usecase.UseCaseRunner
+import com.orgzly.android.widgets.ListWidgetDataObserver
 import dagger.Module
 import dagger.Provides
 import javax.inject.Singleton
@@ -63,6 +64,15 @@ internal open class DataModule {
             scope: CoroutineScope
     ): DataChangedSignal {
         return DataChangedSignal(database, scope)
+    }
+
+    @Provides
+    @Singleton
+    internal fun providesListWidgetDataObserver(
+            signal: DataChangedSignal,
+            app: Application
+    ): ListWidgetDataObserver {
+        return ListWidgetDataObserver(signal, app)
     }
 
 

@@ -47,6 +47,7 @@ public class App extends Application {
         // Eagerly resolve the data-changed signal so its InvalidationTracker
         // collector is registered before any DB writes happen.
         appComponent.dataChangedSignal();
+        appComponent.listWidgetDataObserver().start();
 
 //        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
 //                .detectAll()

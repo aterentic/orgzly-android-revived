@@ -43,6 +43,7 @@ import com.orgzly.android.ui.share.ShareActivity
 import com.orgzly.android.ui.sync.SyncFragment
 import com.orgzly.android.usecase.UseCaseRunner
 import com.orgzly.android.usecase.UseCaseWorker
+import com.orgzly.android.widgets.ListWidgetDataObserver
 import com.orgzly.android.widgets.ListWidgetProvider
 import com.orgzly.android.widgets.ListWidgetSelectionActivity
 import com.orgzly.android.widgets.ListWidgetService
@@ -111,4 +112,5 @@ interface AppComponent {
     fun inject(arg: ExternalAccessActionHandler)
 
     fun dataChangedSignal(): DataChangedSignal
+    fun listWidgetDataObserver(): ListWidgetDataObserver
 }
