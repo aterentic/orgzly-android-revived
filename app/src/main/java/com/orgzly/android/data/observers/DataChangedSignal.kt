@@ -28,6 +28,14 @@ class DataChangedSignal @Inject constructor(
     /** Emits when data a consumer renders has changed. */
     val events: SharedFlow<Unit> = _events.asSharedFlow()
 
+    /**
+     * Emit for a change no DB write will announce, such as a settings edit.
+     * Skips the debounce, which exists to coalesce bulk writes.
+     */
+    fun notifyChanged() {
+        emitChanged()
+    }
+
     private fun emitChanged() {
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "emit")
         _events.tryEmit(Unit)

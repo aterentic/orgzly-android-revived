@@ -172,6 +172,7 @@ public class MainActivity extends CommonActivity
             }
         };
 
+        // Publishes shortcuts at startup, before any data change occurs.
         new SharingShortcutsManager().replaceDynamicShortcuts(this);
     }
 
