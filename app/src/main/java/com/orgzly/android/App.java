@@ -48,6 +48,7 @@ public class App extends Application {
         // collector is registered before any DB writes happen.
         appComponent.dataChangedSignal();
         appComponent.listWidgetDataObserver().start();
+        appComponent.remindersDataObserver().start();
 
 //        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
 //                .detectAll()

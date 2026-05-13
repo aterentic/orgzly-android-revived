@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import com.orgzly.android.data.observers.DataChangedSignal
 import kotlinx.coroutines.CoroutineScope
 import com.orgzly.android.db.OrgzlyDatabase
+import com.orgzly.android.reminders.RemindersDataObserver
 import com.orgzly.android.repos.RepoFactory
 import com.orgzly.android.usecase.UseCaseRunner
 import com.orgzly.android.widgets.ListWidgetDataObserver
@@ -73,6 +74,15 @@ internal open class DataModule {
             app: Application
     ): ListWidgetDataObserver {
         return ListWidgetDataObserver(signal, app)
+    }
+
+    @Provides
+    @Singleton
+    internal fun providesRemindersDataObserver(
+            signal: DataChangedSignal,
+            app: Application
+    ): RemindersDataObserver {
+        return RemindersDataObserver(signal, app)
     }
 
 
