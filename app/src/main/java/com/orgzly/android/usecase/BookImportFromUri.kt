@@ -13,7 +13,6 @@ class BookImportFromUri(val bookName: String, val format: BookFormat, val uri: U
         dataRepository.importBook(bookName, format, uri)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

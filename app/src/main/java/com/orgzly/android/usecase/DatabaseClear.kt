@@ -7,7 +7,6 @@ class DatabaseClear : UseCase() {
         dataRepository.clearDatabase()
 
         return UseCaseResult(
-                modifiesLocalData = true
         )
     }
 }

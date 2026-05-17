@@ -9,7 +9,6 @@ class NoteReparseStateAndTitles : UseCase() {
         dataRepository.reParseNotesStateAndTitles()
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

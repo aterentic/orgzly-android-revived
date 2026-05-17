@@ -8,7 +8,6 @@ class NoteUpdateDeadlineTime(val noteIds: Set<Long>, val time: OrgDateTime?) : U
         dataRepository.setNotesDeadlineTime(noteIds, time)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

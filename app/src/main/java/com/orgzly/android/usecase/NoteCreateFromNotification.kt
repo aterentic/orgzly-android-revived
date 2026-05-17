@@ -7,7 +7,6 @@ class NoteCreateFromNotification(val title: String) : UseCase() {
         dataRepository.createNoteFromNotification(title)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_NOTE_CREATED
         )
     }

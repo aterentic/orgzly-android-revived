@@ -8,7 +8,6 @@ class TimestampUpdate : UseCase() {
         dataRepository.updateTimestamps()
 
         return UseCaseResult(
-                modifiesLocalData = true
         )
     }
 

@@ -10,7 +10,6 @@ class BookUpdatePreface(val bookId: Long, val preface: String) : UseCase() {
         dataRepository.setBookPreface(bookId, preface)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

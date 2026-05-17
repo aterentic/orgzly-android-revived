@@ -492,7 +492,7 @@ class StructureTest : OrgzlyTest() {
 
         val note = getNote("Note A-02")
 
-        val (_, _, _, userData) = UseCaseRunner.run(NotePromote(setOf(note.id)))
+        val (_, _, userData) = UseCaseRunner.run(NotePromote(setOf(note.id)))
 
         Assert.assertEquals(1, userData as Int)
 
@@ -526,7 +526,7 @@ class StructureTest : OrgzlyTest() {
     fun testPromoteFirstLevelNote() {
         testUtils.setupBook("Book A", "* Note A-01")
         val note = getNote("Note A-01")
-        val (_, _, _, userData) = UseCaseRunner.run(NotePromote(setOf(note.id)))
+        val (_, _, userData) = UseCaseRunner.run(NotePromote(setOf(note.id)))
         Assert.assertEquals(0, userData as Int)
     }
 
@@ -609,7 +609,7 @@ class StructureTest : OrgzlyTest() {
         // Fold and promote A-02
         getNote("Note A-02").let { note ->
             UseCaseRunner.run(NoteToggleFolding(note.id))
-            val (_, _, _, userData) = UseCaseRunner.run(NotePromote(setOf(note.id)))
+            val (_, _, userData) = UseCaseRunner.run(NotePromote(setOf(note.id)))
             Assert.assertEquals(2, userData as Int)
         }
 
@@ -962,7 +962,7 @@ class StructureTest : OrgzlyTest() {
                 """.trimIndent())
 
         // Demote A-05
-        val (_, _, _, userData) = UseCaseRunner.run(NoteDemote(
+        val (_, _, userData) = UseCaseRunner.run(NoteDemote(
                 setOf(getNote("Note A-05").id)))
 
         Assert.assertEquals(0, userData as Int)
