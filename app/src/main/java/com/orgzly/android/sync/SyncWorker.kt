@@ -11,6 +11,7 @@ import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.logs.AppLogsRepository
+import com.orgzly.android.data.observers.DataChangedSignal
 import com.orgzly.android.db.entity.BookAction
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.repos.DirectoryRepo
@@ -38,11 +39,14 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
     @Inject
     lateinit var appLogs: AppLogsRepository
 
+    @Inject
+    lateinit var dataChangedSignal: DataChangedSignal
+
     override suspend fun doWork(): Result {
         App.appComponent.inject(this)
 
         val state = try {
-            tryDoWork()
+            dataChangedSignal.coalescingWrites { tryDoWork() }
 
         } catch (e: CancellationException) {
             updateBooksStatusToCanceled()
@@ -51,6 +55,10 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         } catch (e: Exception) {
             SyncState.getInstance(SyncState.Type.FAILED_EXCEPTION, e.localizedMessage)
         }
+
+        // An attempt that wrote nothing leaves the InvalidationTracker silent,
+        // and the widget stuck on "syncing" until some later write.
+        dataChangedSignal.notifySyncAttemptFinished()
 
         val result = if (state.isFailure()) {
             Result.failure(state.toData())

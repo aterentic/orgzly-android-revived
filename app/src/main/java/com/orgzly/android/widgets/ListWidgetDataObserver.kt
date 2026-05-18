@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.orgzly.android.data.observers.DataChangedSignal
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,7 +16,7 @@ class ListWidgetDataObserver @Inject constructor(
 ) {
     fun start() {
         ProcessLifecycleOwner.get().lifecycleScope.launch {
-            signal.events.collect {
+            merge(signal.events, signal.syncAttempts).collect {
                 ListWidgetProvider.notifyDataSetChanged(context)
             }
         }

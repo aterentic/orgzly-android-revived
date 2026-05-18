@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,6 +29,21 @@ class DataChangedSignal @Inject constructor(
     /** Emits when data a consumer renders has changed. */
     val events: SharedFlow<Unit> = _events.asSharedFlow()
 
+    private val _syncAttempts = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    /**
+     * Emits when a sync attempt ends, whether or not it changed anything.
+     * Only a consumer that renders sync state has reason to collect this.
+     */
+    val syncAttempts: SharedFlow<Unit> = _syncAttempts.asSharedFlow()
+
+    private val coalescing = AtomicBoolean(false)
+    private val missedWhileCoalescing = AtomicBoolean(false)
+
     /**
      * Emit for a change no DB write will announce, such as a settings edit.
      * Skips the debounce, which exists to coalesce bulk writes.
@@ -36,7 +52,33 @@ class DataChangedSignal @Inject constructor(
         emitChanged()
     }
 
+    fun notifySyncAttemptFinished() {
+        _syncAttempts.tryEmit(Unit)
+    }
+
+    /**
+     * Hold back change events until [block] returns, then emit one covering
+     * everything it wrote. A sync writes each book's status separately with a
+     * network round-trip in between, so without this each book costs every
+     * consumer a full refresh. Not reentrant.
+     */
+    suspend fun <T> coalescingWrites(block: suspend () -> T): T {
+        coalescing.set(true)
+        try {
+            return block()
+        } finally {
+            coalescing.set(false)
+            if (missedWhileCoalescing.getAndSet(false)) {
+                emitChanged()
+            }
+        }
+    }
+
     private fun emitChanged() {
+        if (coalescing.get()) {
+            missedWhileCoalescing.set(true)
+            return
+        }
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "emit")
         _events.tryEmit(Unit)
     }
