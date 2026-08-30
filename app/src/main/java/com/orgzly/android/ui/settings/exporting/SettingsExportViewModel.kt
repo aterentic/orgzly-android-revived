@@ -104,14 +104,12 @@ class SettingsExportViewModel(
             val note = item.payload as Note
             dataRepository.exportSettingsAndSearchesToNote(note)
             exportedEvent.postValue(UseCaseResult(
-                modifiesLocalData = true,
                 // Let's not trigger auto-sync, in case of accidental export to the wrong note.
                 triggersSync = SYNC_NOT_REQUIRED,
                 userData = note.title,
             ))
         } catch (e: Exception) {
             exportedEvent.postValue(UseCaseResult(
-                modifiesLocalData = false,
                 triggersSync = SYNC_NOT_REQUIRED,
                 userData = e,
             ))

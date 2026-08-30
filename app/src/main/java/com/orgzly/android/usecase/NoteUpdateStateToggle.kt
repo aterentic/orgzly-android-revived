@@ -10,7 +10,6 @@ class NoteUpdateStateToggle(val noteIds: Set<Long>) : UseCase() {
         dataRepository.toggleNotesState(noteIds)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

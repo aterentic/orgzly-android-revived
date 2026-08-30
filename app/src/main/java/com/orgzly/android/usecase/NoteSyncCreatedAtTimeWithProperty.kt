@@ -9,7 +9,6 @@ class NoteSyncCreatedAtTimeWithProperty : UseCase() {
         dataRepository.syncCreatedAtTimeWithProperty()
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

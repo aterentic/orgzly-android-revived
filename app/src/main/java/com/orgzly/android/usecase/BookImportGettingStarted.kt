@@ -9,7 +9,6 @@ class BookImportGettingStarted : UseCase() {
         dataRepository.importGettingStartedBook()
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

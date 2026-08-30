@@ -9,7 +9,6 @@ class NoteCreate(val notePayload: NotePayload, val notePlace: NotePlace) : UseCa
         val note = dataRepository.createNote(notePayload, notePlace)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_NOTE_CREATED,
                 userData = note)
     }

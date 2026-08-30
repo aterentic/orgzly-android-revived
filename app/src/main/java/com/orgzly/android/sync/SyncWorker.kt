@@ -9,12 +9,11 @@ import androidx.work.WorkManager
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.App
-import com.orgzly.android.SharingShortcutsManager
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.logs.AppLogsRepository
+import com.orgzly.android.data.observers.DataChangedSignal
 import com.orgzly.android.db.entity.BookAction
 import com.orgzly.android.prefs.AppPreferences
-import com.orgzly.android.reminders.RemindersScheduler
 import com.orgzly.android.repos.DirectoryRepo
 import com.orgzly.android.repos.RepoType
 import com.orgzly.android.repos.RepoUtils
@@ -25,7 +24,6 @@ import com.orgzly.android.ui.util.haveNetworkConnection
 import com.orgzly.android.util.AppPermissions
 import com.orgzly.android.util.LogMajorEvents
 import com.orgzly.android.util.LogUtils
-import com.orgzly.android.widgets.ListWidgetProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CancellationException
@@ -41,11 +39,14 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
     @Inject
     lateinit var appLogs: AppLogsRepository
 
+    @Inject
+    lateinit var dataChangedSignal: DataChangedSignal
+
     override suspend fun doWork(): Result {
         App.appComponent.inject(this)
 
         val state = try {
-            tryDoWork()
+            dataChangedSignal.coalescingWrites { tryDoWork() }
 
         } catch (e: CancellationException) {
             updateBooksStatusToCanceled()
@@ -54,6 +55,10 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         } catch (e: Exception) {
             SyncState.getInstance(SyncState.Type.FAILED_EXCEPTION, e.localizedMessage)
         }
+
+        // An attempt that wrote nothing leaves the InvalidationTracker silent,
+        // and the widget stuck on "syncing" until some later write.
+        dataChangedSignal.notifySyncAttemptFinished()
 
         val result = if (state.isFailure()) {
             Result.failure(state.toData())
@@ -101,10 +106,6 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         val syncStartTime = System.currentTimeMillis()
 
         syncRepos()?.let { return it }
-
-        RemindersScheduler.notifyDataSetChanged(App.getAppContext())
-        ListWidgetProvider.notifyDataSetChanged(App.getAppContext())
-        SharingShortcutsManager().replaceDynamicShortcuts(App.getAppContext())
 
         val syncEndTime = System.currentTimeMillis()
 

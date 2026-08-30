@@ -9,7 +9,6 @@ class NoteMove(val bookId: Long, val noteIds: Set<Long>, val offset: Int) : UseC
         // FIXME: Auto-sync is handled on action bar destroy instead
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

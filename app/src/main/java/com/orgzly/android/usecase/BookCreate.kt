@@ -7,7 +7,6 @@ class BookCreate(val name: String) : UseCase() {
         dataRepository.createBook(name)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }
