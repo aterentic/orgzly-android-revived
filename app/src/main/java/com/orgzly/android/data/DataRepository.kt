@@ -1124,6 +1124,7 @@ class DataRepository @Inject constructor(
                 var updated = 0
 
                 val doneKeywords = AppPreferences.doneKeywordsSet(context)
+                val logDone = LogDonePolicy.resolve(context)
 
                 db.note().getNoteForStateChange(noteIds, state).forEach { note ->
 
@@ -1132,7 +1133,7 @@ class DataRepository @Inject constructor(
 
                     val eventsInNote = EventsInNote(title, content)
 
-                    val scl = StateChangeLogic(doneKeywords)
+                    val scl = StateChangeLogic(doneKeywords, logDone)
 
                     scl.setState(
                             state,
