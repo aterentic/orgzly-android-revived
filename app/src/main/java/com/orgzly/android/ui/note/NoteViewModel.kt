@@ -191,8 +191,38 @@ class NoteViewModel(
                 App.getAppContext(),
                 it,
                 state,
-                LogDonePolicy.resolve(App.getAppContext(), bookView.value?.book?.preface))
+                LogDonePolicy.resolve(
+                    App.getAppContext(),
+                    loggingProperty(it),
+                    bookView.value?.book?.preface))
         }
+    }
+
+    /**
+     * The edited properties decide, so that a LOGGING the user just added, changed or removed
+     * takes effect before the note is saved. Only when they are silent does the ancestry apply.
+     */
+    private fun loggingProperty(payload: NotePayload): String? =
+        payload.properties.all
+            .lastOrNull { it.name.equals(LogDonePolicy.LOGGING, ignoreCase = true) }
+            ?.value
+            ?: ancestorLoggingProperty()
+
+    /**
+     * For a note being created, [noteId] is the note it is placed against rather than the note
+     * itself, so the ancestry depends on where it lands: under that note it inherits from it,
+     * beside it they share the same ancestors, and at the top of a book there are none.
+     */
+    private fun ancestorLoggingProperty(): String? = when {
+        noteId == 0L -> null
+
+        place == null || place == Place.UNSPECIFIED ->
+            dataRepository.getAncestorProperty(noteId, LogDonePolicy.LOGGING)
+
+        place == Place.UNDER || place == Place.UNDER_AS_FIRST ->
+            dataRepository.getInheritedProperty(noteId, LogDonePolicy.LOGGING)
+
+        else -> dataRepository.getAncestorProperty(noteId, LogDonePolicy.LOGGING)
     }
 
     fun updatePayloadScheduledTime(range: OrgRange?) {
