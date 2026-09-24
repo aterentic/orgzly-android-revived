@@ -57,4 +57,40 @@ class LogDonePolicyTest {
             LogDone.NONE,
             LogDonePolicy.fromPreface("#+TITLE: Notes\n#+STARTUP: nologdone\n#+FILETAGS: :work:\n"))
     }
+
+    @Test
+    fun `an absent logging property defers to the caller`() {
+        assertNull(LogDonePolicy.fromLoggingProperty(null))
+    }
+
+    /**
+     * LOGGING replaces the whole logging configuration rather than adding to it, so a value
+     * that names no done keyword switches done-logging off instead of deferring.
+     */
+    @Test
+    fun `a logging property silent on done means off`() {
+        assertEquals(LogDone.NONE, LogDonePolicy.fromLoggingProperty("nil"))
+        assertEquals(LogDone.NONE, LogDonePolicy.fromLoggingProperty("logrepeat"))
+        assertEquals(LogDone.NONE, LogDonePolicy.fromLoggingProperty(""))
+        assertEquals(LogDone.NONE, LogDonePolicy.fromLoggingProperty("   "))
+    }
+
+    @Test
+    fun `a logging property can turn done-logging back on`() {
+        assertEquals(LogDone.TIME, LogDonePolicy.fromLoggingProperty("logdone"))
+        assertEquals(LogDone.NOTE, LogDonePolicy.fromLoggingProperty("lognotedone"))
+        assertEquals(LogDone.NONE, LogDonePolicy.fromLoggingProperty("nologdone"))
+    }
+
+    @Test
+    fun `the last done token in a logging property wins`() {
+        assertEquals(LogDone.NONE, LogDonePolicy.fromLoggingProperty("logdone nologdone"))
+        assertEquals(LogDone.TIME, LogDonePolicy.fromLoggingProperty("nologdone logdone"))
+    }
+
+    @Test
+    fun `a done token is found among other logging tokens`() {
+        assertEquals(
+            LogDone.TIME, LogDonePolicy.fromLoggingProperty("logrepeat logdone logdrawer"))
+    }
 }
