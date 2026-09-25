@@ -1165,16 +1165,18 @@ class DataRepository @Inject constructor(
             return@Callable if (isDone) {
                 var updated = 0
 
-                val doneKeywords = AppPreferences.doneKeywordsSet(context)
                 // A null preface is a cacheable answer, which getOrPut cannot represent.
                 val prefaces = HashMap<Long, String?>()
-                val doneKeywords = BookWorkflow.doneKeywords(
-                    context, getSharedBookPreface(noteIds))
 
                 db.note().getNoteForStateChange(noteIds, state).forEach { note ->
                     if (!prefaces.containsKey(note.bookId)) {
                         prefaces[note.bookId] = db.book().get(note.bookId)?.preface
                     }
+
+                    // Per note, not per batch: a selection can span notebooks with different
+                    // workflows, and the state-change logic needs the one this note lives in.
+                    val doneKeywords = BookWorkflow.doneKeywords(context, prefaces[note.bookId])
+
                     val logDone = LogDonePolicy.resolve(
                         context,
                         db.noteProperty().getInherited(note.noteId, LogDonePolicy.LOGGING),
