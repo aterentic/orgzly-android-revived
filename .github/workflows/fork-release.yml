@@ -1,0 +1,81 @@
+name: Build and publish a fork release
+
+# A separate workflow rather than edits to release.yml, which upstream owns and changes:
+# every edit there would conflict on every sync. Upstream's trigger excludes tags with a
+# suffix ('!v*.*.*-*'), so the two never fire on the same tag.
+
+on:
+  push:
+    tags:
+      - 'v*-patched-*'
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Read version and build number from the tag
+        shell: bash
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
+          # v1.23.0-patched-3 -> 3
+          echo "FORK_BUILD=${tag##*-}" >> "$GITHUB_ENV"
+
+      - name: Setup Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Setup build tool version variable
+        shell: bash
+        run: |
+          BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
+          echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
+
+      # Only the F-Droid flavour. The premium one needs a Dropbox key, and the app bundle only
+      # matters for Play, which a sideloaded fork does not use.
+      - name: Assemble F-Droid APK
+        run: ./gradlew assembleFdroidRelease -PforkBuild=${{ env.FORK_BUILD }} --stacktrace
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign F-Droid APK
+        uses: r0adkll/sign-android-release@dbeba6b98a60b0fd540c02443c7f428cdedf0e7f # v1.0.4
+        id: sign_fdroid_apk
+        with:
+          releaseDirectory: app/build/outputs/apk/fdroid/release
+          signingKeyBase64: ${{ secrets.APK_SIGNING_KEYSTORE_FILE }}
+          # Not a credential: the alias is readable from any APK's signing block.
+          alias: orgzly-revived
+          keyStorePassword: ${{ secrets.APK_SIGNING_KEYSTORE_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
+
+      - name: Rename APK
+        run: mv ${{ steps.sign_fdroid_apk.outputs.signedReleaseFile }} orgzly-revived-fdroid-${{ env.VERSION }}.apk
+
+      # Published, not drafted: Obtainium cannot see draft releases.
+      - name: Publish release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          files: '*.apk'
+          draft: false
+          prerelease: false
+          name: ${{ env.VERSION }}
+          body: |
+            A build of this fork: upstream's release plus the pull requests labelled `patched`.
+            See FORK.md.
