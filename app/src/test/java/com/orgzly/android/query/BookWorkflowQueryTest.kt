@@ -41,7 +41,7 @@ class BookWorkflowQueryTest {
 
     @Test
     fun `without any declared workflow the condition stays a flat list`() {
-        val (selection, args) = sql(".it.done")
+        val (selection, args) = sql("it.done")
 
         assertFalse(selection.contains("CASE"))
         assertEquals(listOf("DONE"), args)
@@ -49,7 +49,7 @@ class BookWorkflowQueryTest {
 
     @Test
     fun `a declared workflow adds a branch for its notebook`() {
-        val (selection, args) = sql(".it.done", 7L to "#+TODO: NEXT | CNCL\n")
+        val (selection, args) = sql("it.done", 7L to "#+TODO: NEXT | CNCL\n")
 
         assertTrue(selection.contains("CASE book_id"))
         assertTrue(selection.contains("WHEN 7 THEN"))
@@ -59,7 +59,7 @@ class BookWorkflowQueryTest {
 
     @Test
     fun `the todo side is resolved the same way`() {
-        val (_, args) = sql(".it.todo", 7L to "#+TODO: NEXT | CNCL\n")
+        val (_, args) = sql("it.todo", 7L to "#+TODO: NEXT | CNCL\n")
 
         assertEquals(listOf("NEXT", "TODO", "NEXT"), args)
     }
@@ -67,7 +67,7 @@ class BookWorkflowQueryTest {
     /** Replacement, not addition: the app's DONE must not match inside that notebook. */
     @Test
     fun `a declared workflow does not keep the configured states for its notebook`() {
-        val (selection, _) = sql(".it.done", 7L to "#+TODO: NEXT | CNCL\n")
+        val (selection, _) = sql("it.done", 7L to "#+TODO: NEXT | CNCL\n")
 
         val branch = selection.substringAfter("WHEN 7 THEN").substringBefore("ELSE")
         assertEquals(1, branch.count { it == '?' })
@@ -76,7 +76,7 @@ class BookWorkflowQueryTest {
     @Test
     fun `notebooks declaring nothing get no branch`() {
         val (selection, args) = sql(
-            ".it.done",
+            "it.done",
             7L to "#+TODO: NEXT | CNCL\n",
             9L to "#+TITLE: Plain\n")
 
@@ -88,7 +88,7 @@ class BookWorkflowQueryTest {
     @Test
     fun `each declaring notebook gets its own branch`() {
         val (selection, args) = sql(
-            ".it.done",
+            "it.done",
             7L to "#+TODO: NEXT | CNCL\n",
             9L to "#+TODO: BUG | FIXED\n")
 
