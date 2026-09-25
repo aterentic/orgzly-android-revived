@@ -253,7 +253,7 @@ def orgJavaLocation() {
         return project(':org-java')
     } else {
         logger.info("app: Using com.github.orgzly-revived:org-java:$versions.org_java from Maven repository")
-        return "com.github.orgzly-revived:org-java:$versions.org_java"
+        return "com.github.aterentic:org-java:$versions.org_java"
     }
 }
 
