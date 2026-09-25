@@ -145,4 +145,71 @@ class BookWorkflowTest : OrgzlyTest() {
 
         assertEquals(listOf("DONE"), BookWorkflow.doneKeywords(context, preface).toList())
     }
+
+    // --- the done button ---
+
+    private fun stateOf(title: String) = dataRepository.getLastNote(title)!!.state
+
+    @Test
+    fun testDoneUsesTheNotebooksDoneState() {
+        testUtils.setupBook("book-a", "#+TODO: NEED | FIN\n\n* NEED Task\n")
+
+        dataRepository.setNoteStateToDone(dataRepository.getLastNote("Task")!!.id)
+
+        assertEquals("FIN", stateOf("Task"))
+    }
+
+    @Test
+    fun testToggleUsesTheNotebooksStates() {
+        testUtils.setupBook("book-a", "#+TODO: NEED | FIN\n\n* NEED Task\n")
+
+        val id = dataRepository.getLastNote("Task")!!.id
+
+        dataRepository.toggleNotesState(setOf(id))
+        assertEquals("FIN", stateOf("Task"))
+
+        dataRepository.toggleNotesState(setOf(id))
+        assertEquals("NEED", stateOf("Task"))
+    }
+
+    /** The symptom: the app's first todo state leaking into a notebook that never declared it. */
+    @Test
+    fun testToggleDoesNotWriteAConfiguredStateIntoADeclaringNotebook() {
+        testUtils.setupBook("book-a", "#+TODO: NEED | FIN\n\n* FIN Task\n")
+
+        dataRepository.toggleNotesState(setOf(dataRepository.getLastNote("Task")!!.id))
+
+        assertEquals("NEED", stateOf("Task"))
+    }
+
+    @Test
+    fun testANotebookDeclaringNothingStillUsesTheConfiguredStates() {
+        testUtils.setupBook("book-b", "* TODO Task\n")
+
+        dataRepository.setNoteStateToDone(dataRepository.getLastNote("Task")!!.id)
+
+        assertEquals("DONE", stateOf("Task"))
+    }
+
+    /** Each notebook is toggled against its own workflow, not one answer for the batch. */
+    @Test
+    fun testTogglingAcrossNotebooksUsesEachOwnStates() {
+        testUtils.setupBook("book-a", "#+TODO: NEED | FIN\n\n* NEED One\n")
+        testUtils.setupBook("book-b", "* TODO Two\n")
+
+        dataRepository.toggleNotesState(noteIds("One", "Two"))
+
+        assertEquals("FIN", stateOf("One"))
+        assertEquals("DONE", stateOf("Two"))
+    }
+
+    /** Marking done has to close the note even when only the file knows the state is done. */
+    @Test
+    fun testDoneClosesTheNoteForADeclaredState() {
+        val book = testUtils.setupBook("book-a", "#+TODO: NEED | FIN\n\n* NEED Task\n")
+
+        dataRepository.setNoteStateToDone(dataRepository.getLastNote("Task")!!.id)
+
+        assertTrue(exportBook(book).contains("CLOSED:"))
+    }
 }
