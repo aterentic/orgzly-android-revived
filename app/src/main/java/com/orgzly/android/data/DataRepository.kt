@@ -426,8 +426,21 @@ class DataRepository @Inject constructor(
         val settings = OrgFileSettings.fromPreface(preface)
         val filetags = Tags.fromList(settings?.filetags)
 
+        val workflowChanged =
+            BookWorkflow.fromPreface(db.book().get(bookId)?.preface)?.toString() !=
+                    BookWorkflow.fromPreface(preface)?.toString()
+
         db.book().updatePreface(bookId, preface, settings.title, filetags)
         setBookPropertiesFromPreface(bookId, preface)
+
+        /*
+         * States are decided when a heading is parsed, so a notebook whose workflow just
+         * changed is holding notes read under the old one: a keyword it now declares is still
+         * sitting in a title, and one it dropped is still a state.
+         */
+        if (workflowChanged) {
+            reParseNotesStateAndTitles(bookId)
+        }
 
         updateBookIsModified(bookId, true)
     }
@@ -1230,7 +1243,7 @@ class DataRepository @Inject constructor(
     }
 
     private fun buildSqlQuery(query: Query): SupportSQLiteQuery {
-        val queryBuilder = SqliteQueryBuilder(context)
+        val queryBuilder = SqliteQueryBuilder(context, BookWorkflow.declaredBy(db.book().getPrefaces()))
 
         val (selection, selectionArgs, having, orderBy) = queryBuilder.build(query)
 
@@ -2354,10 +2367,30 @@ class DataRepository @Inject constructor(
      * Keywords that were part of the title can become states and vice versa.
      */
     @Throws(IOException::class)
-    fun reParseNotesStateAndTitles(): Int {
-        val parserBuilder = OrgParser.Builder()
-                .setTodoKeywords(AppPreferences.todoKeywordsSet(context))
-                .setDoneKeywords(AppPreferences.doneKeywordsSet(context))
+    fun reParseNotesStateAndTitles(bookId: Long? = null): Int {
+        /*
+         * A note is re-read with its own notebook's workflow. Reparsing everything with the
+         * app's keywords would strip the states a notebook declares, putting the keyword back
+         * into the title of every note using one.
+         *
+         * The parser cannot work this out for itself here: it is given a reconstructed heading
+         * rather than a file, so it never sees a preface.
+         */
+        val workflows = BookWorkflow.declaredBy(db.book().getPrefaces())
+
+        val builders = HashMap<Long, OrgParser.Builder>()
+
+        fun builderFor(noteBookId: Long): OrgParser.Builder = builders.getOrPut(noteBookId) {
+            val workflow = workflows[noteBookId]
+
+            OrgParser.Builder()
+                .setTodoKeywords(
+                    workflow?.flatMapTo(LinkedHashSet()) { it.todoKeywords }
+                        ?: AppPreferences.todoKeywordsSet(context))
+                .setDoneKeywords(
+                    workflow?.flatMapTo(LinkedHashSet()) { it.doneKeywords }
+                        ?: AppPreferences.doneKeywordsSet(context))
+        }
 
         var updated = 0
 
@@ -2367,12 +2400,16 @@ class DataRepository @Inject constructor(
             db.noteView().getAll().forEach { noteView ->
                 val note = noteView.note
 
+                if (bookId != null && note.position.bookId != bookId) {
+                    return@forEach
+                }
+
                 val head = OrgMapper.toOrgHead(noteView)
 
                 val headString = parserWriter.whiteSpacedHead(head, note.position.level, false)
 
-                /* Re-parse heading using current setting of keywords. */
-                val file = parserBuilder
+                /* Re-parse heading using the keywords in force for its notebook. */
+                val file = builderFor(note.position.bookId)
                         .setInput(headString)
                         .build()
                         .parse()
