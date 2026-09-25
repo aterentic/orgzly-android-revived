@@ -1375,6 +1375,15 @@ class DataRepository @Inject constructor(
         return db.noteProperty().get(noteId)
     }
 
+    /**
+     * The preface of the one notebook these notes share, or null when they span several, so a
+     * mixed selection falls back to the app's states.
+     */
+    fun getSharedBookPreface(noteIds: Set<Long>): String? =
+        db.note().getBookIdsForNotes(noteIds)
+            .singleOrNull()
+            ?.let { db.book().get(it)?.preface }
+
     fun getNotePropertyNames(): List<String> {
         return (PropertyUtils.DEFAULT_PROPERTIES + db.noteProperty().allDistinctNames())
             .map { it.trim('+') } // Drop "+" property modifiers

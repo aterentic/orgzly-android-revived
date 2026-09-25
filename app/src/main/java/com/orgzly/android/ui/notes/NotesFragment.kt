@@ -135,7 +135,7 @@ abstract class NotesFragment : CommonFragment(), TimestampDialogFragment.OnDateT
         listener: Listener,
         noteIds: Set<Long>,
         currentState: String?,
-        preface: String? = null
+        preface: String? = dataRepository.getSharedBookPreface(noteIds)
     ) {
         dialog = NoteStateDialog.show(
             requireContext(),
