@@ -275,3 +275,6 @@ def getCheckedOutGitCommitHash() {
     def refHead = new File(gitFolder + head[1].trim()) // .git/refs/heads/master
     refHead.text.trim().take takeFromHash
 }
+
+// Fork-only build settings; kept in a separate file to avoid conflicting with upstream.
+apply from: "$rootDir/fork.gradle"
