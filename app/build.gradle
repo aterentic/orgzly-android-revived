@@ -255,7 +255,7 @@ def orgJavaLocation() {
         return project(':org-java')
     } else {
         logger.info("app: Using com.github.orgzly-revived:org-java:$versions.org_java from Maven repository")
-        return "com.github.orgzly-revived:org-java:$versions.org_java"
+        return "com.github.aterentic:org-java:$versions.org_java"
     }
 }
 
@@ -277,3 +277,6 @@ def getCheckedOutGitCommitHash() {
     def refHead = new File(gitFolder + head[1].trim()) // .git/refs/heads/master
     refHead.text.trim().take takeFromHash
 }
+
+// Fork-only build settings; kept in a separate file to avoid conflicting with upstream.
+apply from: "$rootDir/fork.gradle"
