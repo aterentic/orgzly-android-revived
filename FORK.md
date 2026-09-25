@@ -36,6 +36,10 @@ A branch does not have to build on its own, and some cannot. A patch depending o
 dependency, so `patched` is the first place it builds. Red CI on such a branch is the
 dependency showing through, not a broken branch.
 
+**So test such a patch on `patched`, not on its own branch.** Its tests will fail there for
+the same reason its build does, which reads as a broken patch and is not one. Rebuild
+`patched` and run them against the combination.
+
 One pull request is permanently open by design — the one carrying this file, the tooling, and
 the build changes. It must never merge into `master`, and must always be in `patched`.
 
