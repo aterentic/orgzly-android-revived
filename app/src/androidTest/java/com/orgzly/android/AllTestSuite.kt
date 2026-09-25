@@ -26,6 +26,7 @@ import com.orgzly.android.misc.BookParsingTest
 import com.orgzly.android.misc.ContentCheckboxesTitleUpdateViaUpdateNoteContentTest
 import com.orgzly.android.misc.ContentCheckboxesTitleUpdateViaUpdateNoteTest
 import com.orgzly.android.misc.DataTest
+import com.orgzly.android.misc.LoggingPropertyTest
 import com.orgzly.android.misc.NewNoteContentCheckboxesTitleUpdateTest
 import com.orgzly.android.misc.SettingsTest
 import com.orgzly.android.misc.StateChangeParentTitleUpdateTest
@@ -106,7 +107,8 @@ import org.junit.runners.Suite
         ContentCheckboxesTitleUpdateViaUpdateNoteTest::class,
         ContentCheckboxesTitleUpdateViaUpdateNoteContentTest::class,
         NewNoteContentCheckboxesTitleUpdateTest::class,
-        StateChangeParentTitleUpdateTest::class,
+        LoggingPropertyTest::class,
+    StateChangeParentTitleUpdateTest::class,
         UriUtilsTest::class
 )
 class AllTestSuite
