@@ -1378,6 +1378,17 @@ class DataRepository @Inject constructor(
         return db.noteProperty().get(noteId)
     }
 
+    /**
+     * The preface of the one notebook these notes share, or null when they span several.
+     *
+     * Null means "no notebook in scope", which is what makes a caller fall back to the app's
+     * states — correct for a mixed selection, where no single workflow applies.
+     */
+    fun getSharedBookPreface(noteIds: Set<Long>): String? =
+        db.note().getBookIdsForNotes(noteIds)
+            .singleOrNull()
+            ?.let { db.book().get(it)?.preface }
+
     fun getNotePropertyNames(): List<String> {
         return (PropertyUtils.DEFAULT_PROPERTIES + db.noteProperty().allDistinctNames())
             .map { it.trim('+') } // Drop "+" property modifiers
