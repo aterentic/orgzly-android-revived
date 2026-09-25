@@ -131,10 +131,16 @@ abstract class NotesFragment : CommonFragment(), TimestampDialogFragment.OnDateT
         }
     }
 
-    protected fun openNoteStateDialog(listener: Listener, noteIds: Set<Long>, currentState: String?) {
+    protected fun openNoteStateDialog(
+        listener: Listener,
+        noteIds: Set<Long>,
+        currentState: String?,
+        preface: String? = dataRepository.getSharedBookPreface(noteIds)
+    ) {
         dialog = NoteStateDialog.show(
             requireContext(),
             currentState,
+            preface,
             { state -> listener.onStateChangeRequest(noteIds, state) },
             { listener.onStateChangeRequest(noteIds, null) })
     }
