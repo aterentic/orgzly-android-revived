@@ -5,6 +5,7 @@ import com.orgzly.android.data.BookWorkflow
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.query.user.DottedQueryParser
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -102,5 +103,46 @@ class BookWorkflowTest : OrgzlyTest() {
         val note = dataRepository.getLastNote("Abandoned")!!
         assertEquals("CNCL", note.state)
         assertEquals("Abandoned", note.title)
+    }
+
+    // --- which notebook is in scope for a selection ---
+
+    private fun noteIds(vararg titles: String): Set<Long> =
+        titles.map { dataRepository.getLastNote(it)!!.id }.toSet()
+
+    @Test
+    fun testOneNoteResolvesToItsOwnNotebook() {
+        testUtils.setupBook("book-a", "#+TODO: NEXT | CNCL\n\n* CNCL Abandoned\n")
+
+        val preface = dataRepository.getSharedBookPreface(noteIds("Abandoned"))
+
+        assertEquals(listOf("CNCL"), BookWorkflow.doneKeywords(context, preface).toList())
+    }
+
+    @Test
+    fun testSeveralNotesFromOneNotebookResolveToIt() {
+        testUtils.setupBook("book-a", "#+TODO: NEXT | CNCL\n\n* CNCL One\n* NEXT Two\n")
+
+        val preface = dataRepository.getSharedBookPreface(noteIds("One", "Two"))
+
+        assertEquals(listOf("CNCL"), BookWorkflow.doneKeywords(context, preface).toList())
+    }
+
+    /** A mixed selection has no single workflow, so the app's states are the only answer. */
+    @Test
+    fun testNotesFromSeveralNotebooksResolveToNothing() {
+        testUtils.setupBook("book-a", "#+TODO: NEXT | CNCL\n\n* CNCL One\n")
+        testUtils.setupBook("book-b", "* DONE Two\n")
+
+        assertNull(dataRepository.getSharedBookPreface(noteIds("One", "Two")))
+    }
+
+    @Test
+    fun testANotebookDeclaringNothingResolvesToTheConfiguredStates() {
+        testUtils.setupBook("book-b", "* DONE Finished\n")
+
+        val preface = dataRepository.getSharedBookPreface(noteIds("Finished"))
+
+        assertEquals(listOf("DONE"), BookWorkflow.doneKeywords(context, preface).toList())
     }
 }
