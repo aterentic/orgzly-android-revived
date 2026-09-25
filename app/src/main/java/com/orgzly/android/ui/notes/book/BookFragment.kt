@@ -1023,7 +1023,7 @@ class BookFragment :
             R.id.note_popup_set_state,
             R.id.state ->
                 listener?.let {
-                    openNoteStateDialog(it, ids, null)
+                    openNoteStateDialog(it, ids, null, currentBook?.preface)
                 }
 
             R.id.note_popup_toggle_state,
