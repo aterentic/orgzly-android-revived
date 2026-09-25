@@ -39,8 +39,8 @@ class BookWorkflowTest : OrgzlyTest() {
     fun testSearchFindsAStateDeclaredByTheNotebook() {
         testUtils.setupBook("book-a", "#+TODO: NEXT | CNCL\n\n* CNCL Abandoned\n* NEXT Ongoing\n")
 
-        assertEquals(listOf("Abandoned"), search(".it.done"))
-        assertEquals(listOf("Ongoing"), search(".it.todo"))
+        assertEquals(listOf("Abandoned"), search("it.done"))
+        assertEquals(listOf("Ongoing"), search("it.todo"))
     }
 
     /** Replacement: the app's DONE is not a done state inside a notebook declaring its own. */
@@ -48,7 +48,7 @@ class BookWorkflowTest : OrgzlyTest() {
     fun testSearchDoesNotUseConfiguredStatesForADeclaringNotebook() {
         testUtils.setupBook("book-a", "#+TODO: NEXT | CNCL\n\n* DONE Not a state here\n")
 
-        assertTrue(search(".it.done").isEmpty())
+        assertTrue(search("it.done").isEmpty())
     }
 
     @Test
@@ -56,7 +56,7 @@ class BookWorkflowTest : OrgzlyTest() {
         testUtils.setupBook("book-a", "#+TODO: NEXT | CNCL\n\n* CNCL Abandoned\n")
         testUtils.setupBook("book-b", "* DONE Finished\n")
 
-        assertEquals(setOf("Abandoned", "Finished"), search(".it.done").toSet())
+        assertEquals(setOf("Abandoned", "Finished"), search("it.done").toSet())
     }
 
     /** Setting a workflow has to re-read the notebook, or its notes keep their old parse. */
@@ -73,7 +73,7 @@ class BookWorkflowTest : OrgzlyTest() {
 
         val note = dataRepository.getLastNote("Abandoned")!!
         assertEquals("CNCL", note.state)
-        assertEquals(listOf("Abandoned"), search(".it.done"))
+        assertEquals(listOf("Abandoned"), search("it.done"))
     }
 
     /** Clearing it must put the keyword back, not leave a state nothing declares. */
@@ -86,7 +86,7 @@ class BookWorkflowTest : OrgzlyTest() {
             book.id, BookWorkflow.withWorkflowInPreface(book.preface, null))
 
         assertEquals("CNCL Abandoned", dataRepository.getLastNote("CNCL Abandoned")!!.title)
-        assertTrue(search(".it.done").isEmpty())
+        assertTrue(search("it.done").isEmpty())
     }
 
     /**
