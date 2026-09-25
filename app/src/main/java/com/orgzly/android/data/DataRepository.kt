@@ -1101,29 +1101,48 @@ class DataRepository @Inject constructor(
     }
 
     fun setNoteStateToDone(noteId: Long): Int {
-        val firstDone = AppPreferences.getFirstDoneState(context) ?: return 0
+        val firstDone = firstDoneStateFor(setOf(noteId)) ?: return 0
 
         return setNotesState(setOf(noteId), firstDone)
     }
 
+    /**
+     * Toggling asks the note's own notebook what done means, so a notebook declaring its own
+     * workflow is marked done with a state it actually has. Reading the answer from the app's
+     * states writes a keyword the file never declared.
+     *
+     * Notes are grouped by notebook because one answer cannot be right for a selection
+     * spanning several: each group is toggled against its own workflow.
+     */
     fun toggleNotesState(noteIds: Set<Long>): Int {
-        val firstTodo = AppPreferences.getFirstTodoState(context)
-        val firstDone = AppPreferences.getFirstDoneState(context)
+        var updated = 0
 
-        if (firstTodo != null && firstDone != null) {
-            val allNotesAreDone = db.note().get(noteIds).firstOrNull { note ->
-                !AppPreferences.isDoneKeyword(context, note.state)
-            } == null
+        db.note().get(noteIds)
+            .groupBy { it.position.bookId }
+            .forEach { (bookId, notes) ->
+                val preface = db.book().get(bookId)?.preface
 
-            return if (allNotesAreDone) {
-                setNotesState(noteIds, firstTodo)
-            } else {
-                setNotesState(noteIds, firstDone)
+                val firstTodo = BookWorkflow.todoKeywords(context, preface).firstOrNull()
+                val firstDone = BookWorkflow.doneKeywords(context, preface).firstOrNull()
+
+                if (firstTodo == null || firstDone == null) {
+                    return@forEach
+                }
+
+                val doneKeywords = BookWorkflow.doneKeywords(context, preface)
+                val allAreDone = notes.all { it.state != null && it.state in doneKeywords }
+
+                val ids = notes.map { it.id }.toSet()
+
+                updated += setNotesState(ids, if (allAreDone) firstTodo else firstDone)
             }
-        }
 
-        return 0
+        return updated
     }
+
+    /** The done state of the one notebook these notes share, or the app's when they differ. */
+    private fun firstDoneStateFor(noteIds: Set<Long>): String? =
+        BookWorkflow.doneKeywords(context, getSharedBookPreface(noteIds)).firstOrNull()
 
     fun setNotesState(noteIds: Set<Long>, state: String?): Int {
         return db.runInTransaction(Callable {
@@ -1133,10 +1152,21 @@ class DataRepository @Inject constructor(
              */
             updateBookIsModified(db.note().getBookIdsForNotesNotMatchingState(noteIds, state).toSet(), true)
 
-            return@Callable if (AppPreferences.isDoneKeyword(context, state)) {
+            /*
+             * Whether this is a done state is a question about the notebooks involved, not
+             * about the app's settings: a state only one file declares still has to close the
+             * note, shift its repeater, and stamp its closed time.
+             */
+            val isDone = db.note().getBookIdsForNotes(noteIds).any { bookId ->
+                state != null && state in BookWorkflow.doneKeywords(
+                    context, db.book().get(bookId)?.preface)
+            }
+
+            return@Callable if (isDone) {
                 var updated = 0
 
-                val doneKeywords = AppPreferences.doneKeywordsSet(context)
+                val doneKeywords = BookWorkflow.doneKeywords(
+                    context, getSharedBookPreface(noteIds))
 
                 db.note().getNoteForStateChange(noteIds, state).forEach { note ->
 
