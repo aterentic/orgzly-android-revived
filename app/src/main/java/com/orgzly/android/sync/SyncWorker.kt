@@ -55,6 +55,12 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
             SyncState.getInstance(SyncState.Type.FAILED_EXCEPTION, e.localizedMessage)
         }
 
+        // Whatever the outcome: a failed or canceled sync may already have written some
+        // books, and the widget shows sync progress until it is refreshed.
+        RemindersScheduler.notifyDataSetChanged(App.getAppContext())
+        ListWidgetProvider.notifyDataSetChanged(App.getAppContext())
+        SharingShortcutsManager().replaceDynamicShortcuts(App.getAppContext())
+
         val result = if (state.isFailure()) {
             Result.failure(state.toData())
         } else {
@@ -101,10 +107,6 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         val syncStartTime = System.currentTimeMillis()
 
         syncRepos()?.let { return it }
-
-        RemindersScheduler.notifyDataSetChanged(App.getAppContext())
-        ListWidgetProvider.notifyDataSetChanged(App.getAppContext())
-        SharingShortcutsManager().replaceDynamicShortcuts(App.getAppContext())
 
         val syncEndTime = System.currentTimeMillis()
 
