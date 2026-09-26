@@ -111,6 +111,27 @@ class DataChangedSignalTest : OrgzlyTest() {
         )
     }
 
+    @Test
+    fun syncAttempt_reachesOnlySyncAttemptCollectors() {
+        val changes = AtomicInteger(0)
+        val attempts = CountDownLatch(1)
+        subscribed { changes.incrementAndGet() }
+        val ready = CountDownLatch(1)
+        scope.launch {
+            signal.syncAttempts.onSubscription { ready.countDown() }
+                .collect { attempts.countDown() }
+        }
+        ready.await(READY_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+
+        signal.notifySyncAttemptFinished()
+
+        assertTrue(
+            "Expected the sync-attempt collector to see the emission",
+            attempts.await(EMIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        )
+        assertEquals("A sync attempt is not a data change", 0, changes.get())
+    }
+
     /** Returns once [onEvent] is subscribed, so an emission cannot be missed. */
     private fun subscribed(onEvent: () -> Unit) {
         val ready = CountDownLatch(1)

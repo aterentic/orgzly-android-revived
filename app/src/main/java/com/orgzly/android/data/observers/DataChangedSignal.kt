@@ -29,6 +29,18 @@ class DataChangedSignal @Inject constructor(
     /** Emits when data a consumer renders has changed. */
     val events: SharedFlow<Unit> = _events.asSharedFlow()
 
+    private val _syncAttempts = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    /**
+     * Emits when a sync attempt ends, whether or not it changed anything.
+     * Only a consumer that renders sync state has reason to collect this.
+     */
+    val syncAttempts: SharedFlow<Unit> = _syncAttempts.asSharedFlow()
+
     private val coalescing = AtomicBoolean(false)
     private val missedWhileCoalescing = AtomicBoolean(false)
 
@@ -38,6 +50,10 @@ class DataChangedSignal @Inject constructor(
      */
     fun notifyChanged() {
         emitChanged()
+    }
+
+    fun notifySyncAttemptFinished() {
+        _syncAttempts.tryEmit(Unit)
     }
 
     /**

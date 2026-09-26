@@ -58,6 +58,10 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
             SyncState.getInstance(SyncState.Type.FAILED_EXCEPTION, e.localizedMessage)
         }
 
+        // An attempt that wrote nothing leaves the InvalidationTracker silent,
+        // and the widget stuck on "syncing" until some later write.
+        dataChangedSignal.notifySyncAttemptFinished()
+
         val result = if (state.isFailure()) {
             Result.failure(state.toData())
         } else {
