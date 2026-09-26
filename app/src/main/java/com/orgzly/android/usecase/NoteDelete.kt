@@ -7,7 +7,6 @@ class NoteDelete(val bookId: Long, val ids: Set<Long>) : UseCase() {
         val count = dataRepository.deleteNotes(bookId, ids)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED,
                 userData = count
         )

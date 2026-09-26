@@ -12,7 +12,6 @@ class NoteRefile(val noteIds: Set<Long>, val target: NotePlace) : UseCase() {
         val firstRefilledNote = dataRepository.getFirstNote(noteIds)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED,
                 userData = firstRefilledNote
         )

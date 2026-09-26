@@ -7,7 +7,6 @@ class NotePromote(val noteIds: Set<Long>) : UseCase() {
         val count = dataRepository.promoteNotes(noteIds)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED,
                 userData = count
         )

@@ -10,7 +10,6 @@ class BookForceLoad(val bookId: Long) : UseCase() {
         dataRepository.forceLoadBook(bookId)
 
         return UseCaseResult(
-                modifiesLocalData = true
         )
     }
 }

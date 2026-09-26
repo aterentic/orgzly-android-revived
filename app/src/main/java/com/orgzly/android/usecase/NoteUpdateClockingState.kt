@@ -7,7 +7,6 @@ class NoteUpdateClockingState(val noteIds: Set<Long>, val type: Int) : UseCase()
         dataRepository.setNotesClockingState(noteIds, type)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

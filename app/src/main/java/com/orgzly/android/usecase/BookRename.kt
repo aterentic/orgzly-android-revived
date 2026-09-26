@@ -8,7 +8,6 @@ class BookRename(val bookView: BookView, val name: String) : UseCase() {
         dataRepository.renameBook(bookView, name)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

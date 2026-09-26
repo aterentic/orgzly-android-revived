@@ -10,7 +10,6 @@ class NoteUpdateContent(val noteId: Long, val content: String?) : UseCase() {
         dataRepository.updateNoteContent(noteId, content)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

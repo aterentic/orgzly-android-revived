@@ -8,7 +8,6 @@ class NoteUpdateScheduledTime(val noteIds: Set<Long>, val time: OrgDateTime?) : 
         dataRepository.setNotesScheduledTime(noteIds, time)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

@@ -7,7 +7,6 @@ class NoteUpdateState(val noteIds: Set<Long>, val state: String?) : UseCase() {
         dataRepository.setNotesState(noteIds, state)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

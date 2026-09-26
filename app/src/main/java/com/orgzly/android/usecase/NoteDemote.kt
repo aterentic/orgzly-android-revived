@@ -7,7 +7,6 @@ class NoteDemote(val noteIds: Set<Long>) : UseCase() {
         val count = dataRepository.demoteNotes(noteIds)
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED,
                 userData = count
         )

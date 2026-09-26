@@ -9,7 +9,6 @@ class BookDelete(val bookIds: Set<Long>, val deleteLinked: Boolean) : UseCase() 
             dataRepository.deleteBook(book, deleteLinked)
         }
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED
         )
     }

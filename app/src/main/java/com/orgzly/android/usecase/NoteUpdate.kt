@@ -10,7 +10,6 @@ class NoteUpdate(val noteId: Long, val notePayload: NotePayload) : UseCase() {
                 ?: throw IllegalStateException("Note not found")
 
         return UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_DATA_MODIFIED,
                 userData = note)
     }

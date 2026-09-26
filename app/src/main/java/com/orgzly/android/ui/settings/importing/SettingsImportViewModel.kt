@@ -105,13 +105,11 @@ class SettingsImportViewModel(
             val note = item.payload as Note
             dataRepository.importSettingsAndSearchesFromNote(note)
             importedEvent.postValue(UseCaseResult(
-                modifiesLocalData = true,
                 triggersSync = SYNC_NOT_REQUIRED,
                 userData = note.title,
             ))
         } catch (e: Exception) {
             importedEvent.postValue(UseCaseResult(
-                modifiesLocalData = false,
                 triggersSync = SYNC_NOT_REQUIRED,
                 userData = e,
             ))
