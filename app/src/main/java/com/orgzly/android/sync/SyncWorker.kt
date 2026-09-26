@@ -15,7 +15,6 @@ import com.orgzly.android.data.logs.AppLogsRepository
 import com.orgzly.android.data.observers.DataChangedSignal
 import com.orgzly.android.db.entity.BookAction
 import com.orgzly.android.prefs.AppPreferences
-import com.orgzly.android.reminders.RemindersScheduler
 import com.orgzly.android.repos.DirectoryRepo
 import com.orgzly.android.repos.RepoType
 import com.orgzly.android.repos.RepoUtils
@@ -109,7 +108,6 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
 
         syncRepos()?.let { return it }
 
-        RemindersScheduler.notifyDataSetChanged(App.getAppContext())
         SharingShortcutsManager().replaceDynamicShortcuts(App.getAppContext())
 
         val syncEndTime = System.currentTimeMillis()

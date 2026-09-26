@@ -21,7 +21,6 @@ import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.observers.DataChangedSignal
 import com.orgzly.android.git.SshKey
 import com.orgzly.android.prefs.*
-import com.orgzly.android.reminders.RemindersScheduler
 import com.orgzly.android.sync.AutoSyncScheduler
 import com.orgzly.android.ui.CommonActivity
 import com.orgzly.android.ui.NoteStates
@@ -498,7 +497,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
          * - Changing states or priorities can affect the displayed data
          * - Enabling or disabling reminders needs to trigger reminder service notification
          */
-        RemindersScheduler.notifyDataSetChanged(requireContext())
         dataChangedSignal.notifyChanged()
         SharingShortcutsManager().replaceDynamicShortcuts(requireContext())
     }
