@@ -4,6 +4,7 @@ import com.orgzly.android.NewNoteBroadcastReceiver
 import com.orgzly.android.NotificationBroadcastReceiver
 import com.orgzly.android.SharingShortcutsManager
 import com.orgzly.android.TimeChangeBroadcastReceiver
+import com.orgzly.android.data.observers.DataChangedSignal
 import com.orgzly.android.di.module.ApplicationModule
 import com.orgzly.android.di.module.DataModule
 import com.orgzly.android.di.module.DatabaseModule
@@ -42,6 +43,7 @@ import com.orgzly.android.ui.share.ShareActivity
 import com.orgzly.android.ui.sync.SyncFragment
 import com.orgzly.android.usecase.UseCaseRunner
 import com.orgzly.android.usecase.UseCaseWorker
+import com.orgzly.android.widgets.ListWidgetDataObserver
 import com.orgzly.android.widgets.ListWidgetProvider
 import com.orgzly.android.widgets.ListWidgetSelectionActivity
 import com.orgzly.android.widgets.ListWidgetService
@@ -108,4 +110,7 @@ interface AppComponent {
     fun inject(arg: NotificationBroadcastReceiver)
     fun inject(arg: SharingShortcutsManager)
     fun inject(arg: ExternalAccessActionHandler)
+
+    fun dataChangedSignal(): DataChangedSignal
+    fun listWidgetDataObserver(): ListWidgetDataObserver
 }

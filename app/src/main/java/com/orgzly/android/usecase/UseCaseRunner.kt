@@ -42,7 +42,6 @@ object UseCaseRunner {
 
         if (result.modifiesLocalData) {
             RemindersScheduler.notifyDataSetChanged(App.getAppContext())
-            ListWidgetProvider.notifyDataSetChanged(App.getAppContext())
             SharingShortcutsManager().replaceDynamicShortcuts(App.getAppContext())
         }
 

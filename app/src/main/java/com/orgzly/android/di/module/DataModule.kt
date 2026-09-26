@@ -7,9 +7,14 @@ import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.DbRepoBookRepository
 import com.orgzly.android.data.logs.AppLogsRepository
 import com.orgzly.android.data.logs.DatabaseAppLogsRepository
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import com.orgzly.android.data.observers.DataChangedSignal
+import kotlinx.coroutines.CoroutineScope
 import com.orgzly.android.db.OrgzlyDatabase
 import com.orgzly.android.repos.RepoFactory
 import com.orgzly.android.usecase.UseCaseRunner
+import com.orgzly.android.widgets.ListWidgetDataObserver
 import dagger.Module
 import dagger.Provides
 import javax.inject.Singleton
@@ -44,6 +49,30 @@ internal open class DataModule {
     @Singleton
     internal fun providesLogsRepository(database: OrgzlyDatabase): AppLogsRepository {
         return DatabaseAppLogsRepository(database)
+    }
+
+    @Provides
+    @Singleton
+    internal fun providesAppScope(): CoroutineScope {
+        return ProcessLifecycleOwner.get().lifecycleScope
+    }
+
+    @Provides
+    @Singleton
+    internal fun providesDataChangedSignal(
+            database: OrgzlyDatabase,
+            scope: CoroutineScope
+    ): DataChangedSignal {
+        return DataChangedSignal(database, scope)
+    }
+
+    @Provides
+    @Singleton
+    internal fun providesListWidgetDataObserver(
+            signal: DataChangedSignal,
+            app: Application
+    ): ListWidgetDataObserver {
+        return ListWidgetDataObserver(signal, app)
     }
 
 
