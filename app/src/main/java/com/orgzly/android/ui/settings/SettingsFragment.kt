@@ -16,7 +16,6 @@ import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.AppIntent
 import com.orgzly.android.calendar.CalendarWorker
-import com.orgzly.android.SharingShortcutsManager
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.observers.DataChangedSignal
 import com.orgzly.android.git.SshKey
@@ -498,7 +497,6 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
          * - Enabling or disabling reminders needs to trigger reminder service notification
          */
         dataChangedSignal.notifyChanged()
-        SharingShortcutsManager().replaceDynamicShortcuts(requireContext())
     }
 
     private fun updateRemindersScreen() {

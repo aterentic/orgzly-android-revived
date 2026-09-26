@@ -49,6 +49,7 @@ public class App extends Application {
         appComponent.dataChangedSignal();
         appComponent.listWidgetDataObserver().start();
         appComponent.remindersDataObserver().start();
+        appComponent.sharingShortcutsDataObserver().start();
 
 //        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
 //                .detectAll()

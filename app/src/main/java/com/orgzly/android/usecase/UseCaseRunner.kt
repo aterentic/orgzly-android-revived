@@ -4,7 +4,6 @@ import com.orgzly.BuildConfig
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.sync.AutoSync
-import com.orgzly.android.SharingShortcutsManager
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.widgets.ListWidgetProvider
 import javax.inject.Inject
@@ -37,10 +36,6 @@ object UseCaseRunner {
         when (result.triggersSync) {
             UseCase.SYNC_DATA_MODIFIED -> factory.autoSync.trigger(AutoSync.Type.DATA_MODIFIED)
             UseCase.SYNC_NOTE_CREATED -> factory.autoSync.trigger(AutoSync.Type.NOTE_CREATED)
-        }
-
-        if (result.modifiesLocalData) {
-            SharingShortcutsManager().replaceDynamicShortcuts(App.getAppContext())
         }
 
         if (result.modifiesListWidget) {

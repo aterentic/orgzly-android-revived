@@ -2,6 +2,7 @@ package com.orgzly.android.di
 
 import com.orgzly.android.NewNoteBroadcastReceiver
 import com.orgzly.android.NotificationBroadcastReceiver
+import com.orgzly.android.SharingShortcutsDataObserver
 import com.orgzly.android.SharingShortcutsManager
 import com.orgzly.android.TimeChangeBroadcastReceiver
 import com.orgzly.android.data.observers.DataChangedSignal
@@ -115,4 +116,5 @@ interface AppComponent {
     fun dataChangedSignal(): DataChangedSignal
     fun listWidgetDataObserver(): ListWidgetDataObserver
     fun remindersDataObserver(): RemindersDataObserver
+    fun sharingShortcutsDataObserver(): SharingShortcutsDataObserver
 }

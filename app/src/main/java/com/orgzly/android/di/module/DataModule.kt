@@ -3,6 +3,7 @@ package com.orgzly.android.di.module
 import android.app.Application
 import android.content.res.Resources
 import com.orgzly.android.LocalStorage
+import com.orgzly.android.SharingShortcutsDataObserver
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.DbRepoBookRepository
 import com.orgzly.android.data.logs.AppLogsRepository
@@ -83,6 +84,15 @@ internal open class DataModule {
             app: Application
     ): RemindersDataObserver {
         return RemindersDataObserver(signal, app)
+    }
+
+    @Provides
+    @Singleton
+    internal fun providesSharingShortcutsDataObserver(
+            signal: DataChangedSignal,
+            app: Application
+    ): SharingShortcutsDataObserver {
+        return SharingShortcutsDataObserver(signal, app)
     }
 
 

@@ -9,7 +9,6 @@ import androidx.work.WorkManager
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.App
-import com.orgzly.android.SharingShortcutsManager
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.logs.AppLogsRepository
 import com.orgzly.android.data.observers.DataChangedSignal
@@ -107,8 +106,6 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         val syncStartTime = System.currentTimeMillis()
 
         syncRepos()?.let { return it }
-
-        SharingShortcutsManager().replaceDynamicShortcuts(App.getAppContext())
 
         val syncEndTime = System.currentTimeMillis()
 
