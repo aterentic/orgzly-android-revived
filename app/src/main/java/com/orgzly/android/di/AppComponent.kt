@@ -13,6 +13,7 @@ import com.orgzly.android.reminders.RemindersBroadcastReceiver
 import com.orgzly.android.sync.ScheduledSyncWorker
 import com.orgzly.android.sync.SyncWorker
 import com.orgzly.android.ui.BookChooserActivity
+import com.orgzly.android.ui.SavedSearchChooserActivity
 import com.orgzly.android.ui.TemplateChooserActivity
 import com.orgzly.android.ui.books.BooksFragment
 import com.orgzly.android.ui.capture.CaptureTemplateEditFragment
@@ -69,6 +70,7 @@ interface AppComponent {
     fun inject(arg: ShareActivity)
     fun inject(arg: BookChooserActivity)
     fun inject(arg: TemplateChooserActivity)
+    fun inject(arg: SavedSearchChooserActivity)
     fun inject(arg: ListWidgetSelectionActivity)
     fun inject(arg: AppLogsActivity)
 
