@@ -60,7 +60,12 @@ import com.orgzly.org.utils.StateChangeLogic
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.orgzly.android.calendar.CalendarWorker
+import androidx.lifecycle.asLiveData
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import java.io.*
 import java.util.*
 import java.util.concurrent.Callable
@@ -271,6 +276,16 @@ class DataRepository @Inject constructor(
         return db.book().getLiveData(id)
     }
 
+    fun getNotebookDoneStates(): NotebookDoneStates =
+        NotebookDoneStates.declaredBy(db.book().getPrefaces())
+
+    fun getNotebookDoneStatesLiveData(): LiveData<NotebookDoneStates> =
+        db.book().getPrefacesFlow()
+            .map { NotebookDoneStates.declaredBy(it) }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+            .asLiveData()
+
     /**
      * Returns full string content of the book in format specified. Used by tests.
      */
@@ -426,8 +441,18 @@ class DataRepository @Inject constructor(
         val settings = OrgFileSettings.fromPreface(preface)
         val filetags = Tags.fromList(settings?.filetags)
 
+        val workflowChanged =
+            BookWorkflow.fromPreface(db.book().get(bookId)?.preface)?.toString() !=
+                    BookWorkflow.fromPreface(preface)?.toString()
+
         db.book().updatePreface(bookId, preface, settings.title, filetags)
         setBookPropertiesFromPreface(bookId, preface)
+
+        // States are decided when a heading is parsed, so notes read under the old workflow
+        // keep a newly declared keyword in their title and a dropped one as their state.
+        if (workflowChanged) {
+            reParseNotesStateAndTitles(bookId)
+        }
 
         updateBookIsModified(bookId, true)
     }
@@ -1088,29 +1113,44 @@ class DataRepository @Inject constructor(
     }
 
     fun setNoteStateToDone(noteId: Long): Int {
-        val firstDone = AppPreferences.getFirstDoneState(context) ?: return 0
+        val firstDone = firstDoneStateFor(setOf(noteId)) ?: return 0
 
         return setNotesState(setOf(noteId), firstDone)
     }
 
+    /**
+     * Toggles each note against its own notebook's workflow, so it never gets a keyword its file
+     * does not declare. Notes are grouped by notebook because a selection may span several.
+     */
     fun toggleNotesState(noteIds: Set<Long>): Int {
-        val firstTodo = AppPreferences.getFirstTodoState(context)
-        val firstDone = AppPreferences.getFirstDoneState(context)
+        var updated = 0
 
-        if (firstTodo != null && firstDone != null) {
-            val allNotesAreDone = db.note().get(noteIds).firstOrNull { note ->
-                !AppPreferences.isDoneKeyword(context, note.state)
-            } == null
+        db.note().get(noteIds)
+            .groupBy { it.position.bookId }
+            .forEach { (bookId, notes) ->
+                val preface = db.book().get(bookId)?.preface
 
-            return if (allNotesAreDone) {
-                setNotesState(noteIds, firstTodo)
-            } else {
-                setNotesState(noteIds, firstDone)
+                val firstTodo = BookWorkflow.todoKeywords(context, preface).firstOrNull()
+                val firstDone = BookWorkflow.doneKeywords(context, preface).firstOrNull()
+
+                if (firstTodo == null || firstDone == null) {
+                    return@forEach
+                }
+
+                val doneKeywords = BookWorkflow.doneKeywords(context, preface)
+                val allAreDone = notes.all { it.state != null && it.state in doneKeywords }
+
+                val ids = notes.map { it.id }.toSet()
+
+                updated += setNotesState(ids, if (allAreDone) firstTodo else firstDone)
             }
-        }
 
-        return 0
+        return updated
     }
+
+    /** The done state of the one notebook these notes share, or the app's when they differ. */
+    private fun firstDoneStateFor(noteIds: Set<Long>): String? =
+        BookWorkflow.doneKeywords(context, getSharedBookPreface(noteIds)).firstOrNull()
 
     fun setNotesState(noteIds: Set<Long>, state: String?): Int {
         return db.runInTransaction(Callable {
@@ -1120,10 +1160,16 @@ class DataRepository @Inject constructor(
              */
             updateBookIsModified(db.note().getBookIdsForNotesNotMatchingState(noteIds, state).toSet(), true)
 
-            return@Callable if (AppPreferences.isDoneKeyword(context, state)) {
+            // Asked of the notebooks, so a done state only one file declares still closes the
+            // note, shifts its repeater and stamps its closed time.
+            val isDone = db.note().getBookIdsForNotes(noteIds).any { bookId ->
+                state != null && state in BookWorkflow.doneKeywords(
+                    context, db.book().get(bookId)?.preface)
+            }
+
+            return@Callable if (isDone) {
                 var updated = 0
 
-                val doneKeywords = AppPreferences.doneKeywordsSet(context)
                 // A null preface is a cacheable answer, which getOrPut cannot represent.
                 val prefaces = HashMap<Long, String?>()
 
@@ -1131,6 +1177,11 @@ class DataRepository @Inject constructor(
                     if (!prefaces.containsKey(note.bookId)) {
                         prefaces[note.bookId] = db.book().get(note.bookId)?.preface
                     }
+
+                    // Per note, not per batch: a selection can span notebooks with different
+                    // workflows, and the state-change logic needs the one this note lives in.
+                    val doneKeywords = BookWorkflow.doneKeywords(context, prefaces[note.bookId])
+
                     val logDone = LogDonePolicy.resolve(
                         context,
                         db.noteProperty().getInherited(note.noteId, LogDonePolicy.LOGGING),
@@ -1230,7 +1281,7 @@ class DataRepository @Inject constructor(
     }
 
     private fun buildSqlQuery(query: Query): SupportSQLiteQuery {
-        val queryBuilder = SqliteQueryBuilder(context)
+        val queryBuilder = SqliteQueryBuilder(context, BookWorkflow.declaredBy(db.book().getPrefaces()))
 
         val (selection, selectionArgs, having, orderBy) = queryBuilder.build(query)
 
@@ -1381,6 +1432,15 @@ class DataRepository @Inject constructor(
     fun getAncestorProperty(noteId: Long, name: String): String? {
         return db.noteProperty().getInheritedFromAncestors(noteId, name)
     }
+
+    /**
+     * The preface of the one notebook these notes share, or null when they span several, so a
+     * mixed selection falls back to the app's states.
+     */
+    fun getSharedBookPreface(noteIds: Set<Long>): String? =
+        db.note().getBookIdsForNotes(noteIds)
+            .singleOrNull()
+            ?.let { db.book().get(it)?.preface }
 
     fun getNotePropertyNames(): List<String> {
         return (PropertyUtils.DEFAULT_PROPERTIES + db.noteProperty().allDistinctNames())
@@ -2354,10 +2414,24 @@ class DataRepository @Inject constructor(
      * Keywords that were part of the title can become states and vice versa.
      */
     @Throws(IOException::class)
-    fun reParseNotesStateAndTitles(): Int {
-        val parserBuilder = OrgParser.Builder()
-                .setTodoKeywords(AppPreferences.todoKeywordsSet(context))
-                .setDoneKeywords(AppPreferences.doneKeywordsSet(context))
+    fun reParseNotesStateAndTitles(bookId: Long? = null): Int {
+        // Each note is re-read with its own notebook's workflow: the parser gets a bare heading
+        // here, never the preface, so it cannot find the file's keywords by itself.
+        val workflows = BookWorkflow.declaredBy(db.book().getPrefaces())
+
+        val builders = HashMap<Long, OrgParser.Builder>()
+
+        fun builderFor(noteBookId: Long): OrgParser.Builder = builders.getOrPut(noteBookId) {
+            val workflow = workflows[noteBookId]
+
+            OrgParser.Builder()
+                .setTodoKeywords(
+                    workflow?.flatMapTo(LinkedHashSet()) { it.todoKeywords }
+                        ?: AppPreferences.todoKeywordsSet(context))
+                .setDoneKeywords(
+                    workflow?.flatMapTo(LinkedHashSet()) { it.doneKeywords }
+                        ?: AppPreferences.doneKeywordsSet(context))
+        }
 
         var updated = 0
 
@@ -2367,12 +2441,16 @@ class DataRepository @Inject constructor(
             db.noteView().getAll().forEach { noteView ->
                 val note = noteView.note
 
+                if (bookId != null && note.position.bookId != bookId) {
+                    return@forEach
+                }
+
                 val head = OrgMapper.toOrgHead(noteView)
 
                 val headString = parserWriter.whiteSpacedHead(head, note.position.level, false)
 
-                /* Re-parse heading using current setting of keywords. */
-                val file = parserBuilder
+                /* Re-parse heading using the keywords in force for its notebook. */
+                val file = builderFor(note.position.bookId)
                         .setInput(headString)
                         .build()
                         .parse()
