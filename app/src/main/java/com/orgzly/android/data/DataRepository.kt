@@ -1221,7 +1221,7 @@ class DataRepository @Inject constructor(
     }
 
     private fun buildSqlQuery(query: Query): SupportSQLiteQuery {
-        val queryBuilder = SqliteQueryBuilder(context)
+        val queryBuilder = SqliteQueryBuilder(context, BookWorkflow.declaredBy(db.book().getPrefaces()))
 
         val (selection, selectionArgs, having, orderBy) = queryBuilder.build(query)
 
