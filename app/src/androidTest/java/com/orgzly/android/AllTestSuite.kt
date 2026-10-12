@@ -25,6 +25,7 @@ import com.orgzly.android.misc.BookNameTest
 import com.orgzly.android.misc.BookParsingTest
 import com.orgzly.android.misc.ContentCheckboxesTitleUpdateViaUpdateNoteContentTest
 import com.orgzly.android.misc.ContentCheckboxesTitleUpdateViaUpdateNoteTest
+import com.orgzly.android.misc.BookWorkflowTest
 import com.orgzly.android.misc.DataTest
 import com.orgzly.android.misc.NewNoteContentCheckboxesTitleUpdateTest
 import com.orgzly.android.misc.SettingsTest
@@ -78,6 +79,7 @@ import org.junit.runners.Suite
 
         BookNameTest::class,
         BookParsingTest::class,
+        BookWorkflowTest::class,
         CreatedAtPropertyTest::class,
         DataTest::class,
         SettingsTest::class,
