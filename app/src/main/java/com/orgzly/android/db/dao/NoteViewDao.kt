@@ -66,6 +66,9 @@ abstract class NoteViewDao {
     @Query("$QUERY WHERE notes.id = :id GROUP BY notes.id")
     abstract fun get(id: Long): NoteView?
 
+    @Query("$QUERY WHERE notes.id IN (:ids) GROUP BY notes.id")
+    abstract fun get(ids: Set<Long>): List<NoteView>
+
     @Query("$QUERY WHERE (notes.scheduled_range_id IS NOT NULL OR notes.deadline_range_id IS NOT NULL) AND notes.level > 0 GROUP BY notes.id")
     abstract fun getAllWithScheduledOrDeadline(): List<NoteView>
 
