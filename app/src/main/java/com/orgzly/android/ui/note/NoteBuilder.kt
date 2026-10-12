@@ -24,9 +24,11 @@ class NoteBuilder {
     companion object {
 
         @JvmStatic
-        fun changeState(context: Context, notePayload: NotePayload, state: String?): NotePayload {
-
-            val doneKeywords = AppPreferences.doneKeywordsSet(context)
+        fun changeState(
+                context: Context,
+                notePayload: NotePayload,
+                state: String?,
+                doneKeywords: Set<String>): NotePayload {
 
             var title = notePayload.title
             var content = notePayload.content
