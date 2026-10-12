@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.orgzly.R
 import com.orgzly.android.App
+import com.orgzly.android.data.BookWorkflow
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.mappers.OrgMapper
 import com.orgzly.android.db.entity.BookView
@@ -186,7 +187,11 @@ class NoteViewModel(
 
     fun updatePayloadState(state: String?) {
         notePayload?.let {
-            notePayload = NoteBuilder.changeState(App.getAppContext(), it, state)
+            notePayload = NoteBuilder.changeState(
+                App.getAppContext(),
+                it,
+                state,
+                BookWorkflow.doneKeywords(App.getAppContext(), bookView.value?.book?.preface))
         }
     }
 
