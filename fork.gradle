@@ -1,0 +1,27 @@
+/*
+ * Fork-only build settings, applied from the end of app/build.gradle.
+ *
+ * Kept out of app/build.gradle so that upstream's edits to it — the versionCode literal is
+ * bumped every release — do not conflict with ours.
+ */
+
+android {
+    defaultConfig {
+        /*
+         * Builds from this fork must not reuse upstream's versionCode. Obtainium and Android
+         * compare it, so two builds sharing one look like the same version and no update is
+         * offered, with nothing reported.
+         *
+         * Multiplying leaves room for the fork's own builds while staying below whatever
+         * upstream's next release will use: their 292 becomes 292001, 292002, ...; their next
+         * release at 293 becomes 293000, still higher. The ordering never inverts, so moving
+         * onto a newer upstream release is always an upgrade.
+         *
+         * The build number comes from the tag, so the tag is the only place it is written down.
+         */
+        def forkBuild = (project.findProperty('forkBuild') ?: '0').toString().toInteger()
+
+        versionCode = versionCode * 1000 + forkBuild
+        versionName = "${versionName}-patched-${forkBuild}"
+    }
+}
