@@ -43,6 +43,7 @@ import com.orgzly.android.repos.DirectoryRepoTest
 import com.orgzly.android.repos.DropboxRepoTest
 import com.orgzly.android.repos.LocalDbRepoTest
 import com.orgzly.android.repos.RepoFactoryTest
+import com.orgzly.android.sync.SyncRunnerTest
 import com.orgzly.android.uiautomator.ListWidgetTest
 import com.orgzly.android.usecase.NoteUpdateDeadlineTimeTest
 import com.orgzly.android.usecase.NoteUpdateScheduledTimeTest
@@ -101,6 +102,8 @@ import org.junit.runners.Suite
         DropboxRepoTest::class,
         LocalDbRepoTest::class,
         RepoFactoryTest::class,
+
+        SyncRunnerTest::class,
 
         ListWidgetTest::class,
 
