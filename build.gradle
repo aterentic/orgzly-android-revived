@@ -52,7 +52,7 @@ buildscript {
 
     versions.compose_emily_units = '2.0.3'
 
-    versions.org_java = '1.4.0'
+    versions.org_java = '4838c5860a'
 
     versions.loremipsum = '1.0'
 
