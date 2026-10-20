@@ -134,6 +134,7 @@
 
     <string name="book_does_not_exist_anymore">This notebook does not exist any more.</string>
     <string name="note_does_not_exist_anymore">This note does not exist any more.</string>
+    <string name="saved_search_does_not_exist_anymore">This saved search does not exist any more.</string>
 
     <string name="repo_dropbox_button_not_linked">Link to Dropbox</string>
     <string name="repo_dropbox_button_linked">Unlink from Dropbox</string>
@@ -230,6 +231,7 @@
 
     <string name="book_shortcut_label">Notebook</string>
     <string name="new_note_shortcut_label">New note</string>
+    <string name="saved_search_shortcut_label">Search</string>
 
     <string name="down">Down</string>
     <string name="up">Up</string>
