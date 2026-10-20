@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.text.Layout
 import android.text.Spannable
+import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.TextUtils
@@ -23,8 +24,11 @@ import com.orgzly.android.ui.views.style.CheckboxSpan
 import com.orgzly.android.ui.views.style.DrawerMarkerSpan
 import com.orgzly.android.ui.views.style.MIN_TABLE_SCALE
 import com.orgzly.android.ui.views.style.Offsetting
+import com.orgzly.android.ui.views.style.TableOpenSpan
+import com.orgzly.android.ui.views.style.TableRowClipSpan
 import com.orgzly.android.ui.views.style.TableScaleSpan
 import com.orgzly.android.ui.views.style.TableSpan
+import com.orgzly.android.ui.views.style.removeTableFitting
 import com.orgzly.android.ui.views.style.tableScale
 import com.orgzly.android.util.LogUtils
 
@@ -100,7 +104,8 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
                             true
 
                         MotionEvent.ACTION_UP -> {
-                            clickableSpans[0].onClick(this)
+                            // A cut-off row hides its links, so the tap opens the table instead.
+                            (clickableSpans.firstOrNull { it is TableOpenSpan } ?: clickableSpans[0]).onClick(this)
                             super.onTouchEvent(event)
                         }
 
@@ -184,7 +189,10 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
         }
     }
 
-    /** Scales each table down so its widest row fits the view's width. Safe to call repeatedly. */
+    /**
+     * Scales each table down so its widest row fits the view's width, and cuts off each row still too
+     * wide at the minimum scale. Safe to call repeatedly.
+     */
     fun fitTables() {
         val spannable = text as? Spannable ?: return
         val available = width - totalPaddingLeft - totalPaddingRight
@@ -193,29 +201,54 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
             return
         }
 
-        spannable.getSpans(0, spannable.length, TableScaleSpan::class.java).forEach {
-            spannable.removeSpan(it)
-        }
+        removeTableFitting(spannable)
 
         spannable.getSpans(0, spannable.length, TableSpan::class.java).forEach { table ->
             val start = spannable.getSpanStart(table)
             val end = spannable.getSpanEnd(table)
 
-            val scale = fittingScale(spannable, rows(spannable, start, end), available.toFloat())
+            val rows = rows(spannable, start, end)
+            val scale = fittingScale(spannable, rows, available.toFloat())
 
             if (scale < 1f) {
                 spannable.setSpan(TableScaleSpan(scale), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
+
+            if (scale == MIN_TABLE_SCALE) {
+                rows.zip(rowWidths(spannable, rows, scale))
+                    .filter { (_, rowWidth) -> rowWidth > available }
+                    .forEach { (row, _) ->
+                        val (rowStart, rowEnd) = row
+                        spannable.setSpan(TableRowClipSpan(available), rowStart, rowEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        spannable.setSpan(TableOpenSpan(table), rowStart, rowEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    }
+            }
         }
     }
 
-    private fun fittingScale(text: CharSequence, rows: List<Pair<Int, Int>>, available: Float): Float {
-        val scaledPaint = TextPaint(paint)
+    /** Shows [table] at its normal size in a dialog that scrolls both ways. */
+    fun openTable(table: TableSpan) {
+        val spanned = text as? Spanned ?: return
+        val start = spanned.getSpanStart(table)
 
-        fun widestRowAt(scale: Float): Float {
-            scaledPaint.textSize = paint.textSize * scale
-            return rows.maxOf { (rowStart, rowEnd) -> Layout.getDesiredWidth(text, rowStart, rowEnd, scaledPaint) }
+        if (start < 0) {
+            return
         }
+
+        val copy = SpannableString(spanned.subSequence(start, spanned.getSpanEnd(table)))
+        removeTableFitting(copy)
+
+        showTableDialog(this, copy)
+    }
+
+    private fun rowWidths(text: CharSequence, rows: List<Pair<Int, Int>>, scale: Float): List<Float> {
+        val scaledPaint = TextPaint(paint).apply { textSize = paint.textSize * scale }
+
+        return rows.map { (rowStart, rowEnd) -> Layout.getDesiredWidth(text, rowStart, rowEnd, scaledPaint) }
+    }
+
+    private fun fittingScale(text: CharSequence, rows: List<Pair<Int, Int>>, available: Float): Float {
+        fun widestRowAt(scale: Float): Float = rowWidths(text, rows, scale).max()
 
         var scale = tableScale(widestRowAt(1f), available)
 
