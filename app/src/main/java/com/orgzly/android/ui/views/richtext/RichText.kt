@@ -223,6 +223,8 @@ class RichText(context: Context, attrs: AttributeSet?) :
 
             richTextView.setText(parsed, TextView.BufferType.SPANNABLE)
 
+            richTextView.fitTables()
+
             ImageLoader.loadImages(richTextView)
 
         } else {

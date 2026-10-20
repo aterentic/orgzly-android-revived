@@ -38,6 +38,7 @@ import com.orgzly.android.repos.DirectoryRepoTest
 import com.orgzly.android.repos.DropboxRepoTest
 import com.orgzly.android.repos.LocalDbRepoTest
 import com.orgzly.android.repos.RepoFactoryTest
+import com.orgzly.android.ui.views.RichTextViewTableTest
 import com.orgzly.android.uiautomator.ListWidgetTest
 import com.orgzly.android.usecase.NoteUpdateDeadlineTimeTest
 import com.orgzly.android.usecase.NoteUpdateScheduledTimeTest
@@ -103,6 +104,7 @@ import org.junit.runners.Suite
         MiscUtilsTest::class,
         OrgFormatterSpeedTest::class,
         OrgFormatterStyleTextTest::class,
+        RichTextViewTableTest::class,
         ContentCheckboxesTitleUpdateViaUpdateNoteTest::class,
         ContentCheckboxesTitleUpdateViaUpdateNoteContentTest::class,
         NewNoteContentCheckboxesTitleUpdateTest::class,
