@@ -1,6 +1,7 @@
 package com.orgzly.android.ui.views
 
 import android.graphics.Typeface
+import android.text.SpannableString
 import android.text.Spanned
 import android.view.View
 import android.view.ViewGroup
@@ -8,7 +9,11 @@ import android.widget.TextView
 import androidx.test.platform.app.InstrumentationRegistry
 import com.orgzly.android.ui.views.richtext.RichTextView
 import com.orgzly.android.ui.views.style.MIN_TABLE_SCALE
+import com.orgzly.android.ui.views.style.TableOpenSpan
+import com.orgzly.android.ui.views.style.TableRowClipSpan
 import com.orgzly.android.ui.views.style.TableScaleSpan
+import com.orgzly.android.ui.views.style.TableSpan
+import com.orgzly.android.ui.views.style.removeTableFitting
 import com.orgzly.android.util.OrgFormatter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -121,16 +126,61 @@ class RichTextViewTableTest {
         }
     }
 
+    private inline fun <reified T> RichTextView.spansOn(row: String): List<T> =
+        (text as Spanned).let { spanned ->
+            val start = text.indexOf(row)
+            spanned.getSpans(start, start + row.length, T::class.java)
+                .filter { spanned.getSpanStart(it) == start && spanned.getSpanEnd(it) == start + row.length }
+        }
+
     @Test
-    fun testVeryWideTableStopsAtMinimumAndWraps() {
+    fun testVeryWideTableStopsAtMinimumAndCutsOffTooWideRows() {
         lateinit var wide: String
+        lateinit var narrow: String
 
         onView({ charWidth ->
             wide = row(charWidth, 3f)
-            wide
+            narrow = row(charWidth, 0.5f)
+            "$wide\n$narrow"
         }) { view ->
             assertEquals(listOf(MIN_TABLE_SCALE), view.scales())
-            assertTrue(view.lineCount(wide) > 1)
+
+            assertEquals(1, view.lineCount(wide))
+            assertEquals(1, view.spansOn<TableRowClipSpan>(wide).size)
+            assertEquals(1, view.spansOn<TableOpenSpan>(wide).size)
+
+            assertEquals(0, view.spansOn<TableRowClipSpan>(narrow).size)
+            assertEquals(0, view.spansOn<TableOpenSpan>(narrow).size)
+        }
+    }
+
+    @Test
+    fun testCutOffRowWithMarkupStaysOnOneLineWithinTheView() {
+        lateinit var wide: String
+
+        onView({ charWidth ->
+            wide = "| *b* =v= " + row(charWidth, 3f).drop(2)
+            wide
+        }) { view ->
+            val line = view.layout.getLineForOffset(view.text.indexOf(wide))
+
+            assertEquals(1, view.lineCount(wide))
+            assertTrue(view.layout.getLineWidth(line) <= width - view.totalPaddingLeft - view.totalPaddingRight)
+        }
+    }
+
+    @Test
+    fun testRemovingTheFittingKeepsOnlyTheTable() {
+        onView({ row(it, 3f) }) { view ->
+            val spanned = view.text as Spanned
+            val copy = SpannableString(spanned)
+
+            removeTableFitting(copy)
+
+            assertEquals(0, copy.getSpans(0, copy.length, TableScaleSpan::class.java).size)
+            assertEquals(0, copy.getSpans(0, copy.length, TableRowClipSpan::class.java).size)
+            assertEquals(0, copy.getSpans(0, copy.length, TableOpenSpan::class.java).size)
+            assertEquals(1, copy.getSpans(0, copy.length, TableSpan::class.java).size)
         }
     }
 
