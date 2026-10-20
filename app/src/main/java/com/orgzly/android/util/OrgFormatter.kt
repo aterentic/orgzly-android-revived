@@ -38,6 +38,8 @@ object OrgFormatter {
 
     private const val MARKUP_CHARS = "*/_=~+"
 
+    private const val MARKER_PAIR_LENGTH = 2
+
     private val MARKUP_PATTERN = Pattern.compile(
             "(?:^|\\G|[$PRE])(([$MARKUP_CHARS])($BORDER|$BORDER$BODY$BORDER)\\2)(?:[$POST]|$)",
             Pattern.MULTILINE)
@@ -246,14 +248,14 @@ object OrgFormatter {
         return found
     }
 
-    private fun newSpan(type: SpanType): CharacterStyle {
+    private fun newSpan(type: SpanType, characterOffset: Int): CharacterStyle {
         return when (type) {
-            SpanType.BOLD -> BoldSpan()
-            SpanType.ITALIC -> ItalicSpan()
-            SpanType.UNDERLINE -> UnderlinedSpan()
-            SpanType.VERBATIM -> VerbatimSpan()
-            SpanType.CODE -> CodeSpan()
-            SpanType.STRIKETHROUGH -> StrikeSpan()
+            SpanType.BOLD -> BoldSpan(characterOffset)
+            SpanType.ITALIC -> ItalicSpan(characterOffset)
+            SpanType.UNDERLINE -> UnderlinedSpan(characterOffset)
+            SpanType.VERBATIM -> VerbatimSpan(characterOffset)
+            SpanType.CODE -> CodeSpan(characterOffset)
+            SpanType.STRIKETHROUGH -> StrikeSpan(characterOffset)
         }
     }
 
@@ -273,14 +275,14 @@ object OrgFormatter {
 
             if (config.withMarks) {
                 spanTypes(str) { type ->
-                    ssb.setSpan(newSpan(type), start, end, FLAGS)
+                    ssb.setSpan(newSpan(type, MARKER_PAIR_LENGTH), start, end, FLAGS)
                 }
 
             } else {
                 val spans = mutableListOf<CharacterStyle>()
 
                 val found = spanTypes(str) {
-                    spans.add(newSpan(it))
+                    spans.add(newSpan(it, MARKER_PAIR_LENGTH))
                 }
 
                 // Content only, without markers
