@@ -2,6 +2,7 @@ package com.orgzly.android.ui.views.richtext
 
 import android.content.Context
 import android.graphics.Rect
+import android.text.Editable
 import android.text.TextWatcher
 import android.util.AttributeSet
 import android.view.KeyEvent
@@ -11,6 +12,7 @@ import androidx.core.view.ancestors
 import androidx.core.widget.NestedScrollView
 import com.orgzly.BuildConfig
 import com.orgzly.android.ui.util.KeyboardUtils
+import com.orgzly.android.ui.views.style.markTables
 import com.orgzly.android.util.LogUtils
 
 class RichTextEdit : AppCompatEditText {
@@ -19,6 +21,12 @@ class RichTextEdit : AppCompatEditText {
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     private val userEditingTextWatcher: TextWatcher = RichTextEditWatcher()
+
+    private val tableMarker: TextWatcher = object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+        override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+        override fun afterTextChanged(s: Editable) = markTables(s)
+    }
 
     fun activate(charOffset: Int) {
         visibility = View.VISIBLE
@@ -34,6 +42,9 @@ class RichTextEdit : AppCompatEditText {
         }
 
         addTextChangedListener(userEditingTextWatcher)
+
+        text?.let(::markTables)
+        addTextChangedListener(tableMarker)
     }
 
     // TODO: Handle closed drawers (and such)
@@ -80,6 +91,7 @@ class RichTextEdit : AppCompatEditText {
 
     fun deactivate() {
         removeTextChangedListener(userEditingTextWatcher)
+        removeTextChangedListener(tableMarker)
 
         visibility = View.GONE
     }
