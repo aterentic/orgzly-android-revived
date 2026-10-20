@@ -57,6 +57,7 @@ object OrgFormatter {
     private val LOGBOOK_DRAWER_PATTERN = drawerPattern(LOGBOOK_DRAWER_NAME)
 
     private const val PLAIN_LIST_CHARS = "-\\+"
+
     private val CHECKBOXES_PATTERN = Pattern.compile("""^\s*[$PLAIN_LIST_CHARS]\s+(\[[ -X]])""", Pattern.MULTILINE)
 
     private const val INACTIVE_DATETIME = "(\\[[0-9]{4,}-[0-9]{2}-[0-9]{2} ?[^\\]\\r\\n>]*?[0-9]{1,2}:[0-9]{2}\\])"
@@ -110,6 +111,9 @@ object OrgFormatter {
         }
 
         ssb = parseLinks(config, ssb)
+
+        /* Before markup, which keeps the markers inside tables. */
+        markTables(ssb)
 
         ssb = parseMarkup(ssb, config)
 
@@ -273,7 +277,13 @@ object OrgFormatter {
             val start = matcher.start(1)
             val end = matcher.end(1)
 
-            if (config.withMarks) {
+            if (overlapsTable(ssb, start, end)) {
+                // Kept markers make a row as wide as the file's padding assumes.
+                spanTypes(str) { type ->
+                    ssb.setSpan(newSpan(type, 0), start, end, FLAGS)
+                }
+
+            } else if (config.withMarks) {
                 spanTypes(str) { type ->
                     ssb.setSpan(newSpan(type, MARKER_PAIR_LENGTH), start, end, FLAGS)
                 }
@@ -300,6 +310,12 @@ object OrgFormatter {
         }
 
         return buildFromRegions(ssb, spanRegions)
+    }
+
+    private fun overlapsTable(ssb: Spanned, start: Int, end: Int): Boolean {
+        return ssb.getSpans(start, end, TableSpan::class.java).any { span ->
+            ssb.getSpanStart(span) < end && ssb.getSpanEnd(span) > start
+        }
     }
 
     /**
