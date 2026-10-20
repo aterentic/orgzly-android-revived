@@ -5,6 +5,7 @@ import android.content.Context
 import android.text.Layout
 import android.text.Spannable
 import android.text.Spanned
+import android.text.TextPaint
 import android.text.TextUtils
 import android.text.style.ClickableSpan
 import android.util.AttributeSet
@@ -20,7 +21,11 @@ import com.orgzly.android.ui.SpanUtils
 import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.ui.views.style.CheckboxSpan
 import com.orgzly.android.ui.views.style.DrawerMarkerSpan
+import com.orgzly.android.ui.views.style.MIN_TABLE_SCALE
 import com.orgzly.android.ui.views.style.Offsetting
+import com.orgzly.android.ui.views.style.TableScaleSpan
+import com.orgzly.android.ui.views.style.TableSpan
+import com.orgzly.android.ui.views.style.tableScale
 import com.orgzly.android.util.LogUtils
 
 class RichTextView : AppCompatTextView, ActionableRichTextView {
@@ -170,6 +175,79 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
         return spansChars
     }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+
+        if (w != oldw) {
+            // A span change requests a layout, which must not happen inside this one.
+            post { fitTables() }
+        }
+    }
+
+    /** Scales each table down so its widest row fits the view's width. Safe to call repeatedly. */
+    fun fitTables() {
+        val spannable = text as? Spannable ?: return
+        val available = width - totalPaddingLeft - totalPaddingRight
+
+        if (available <= 0) {
+            return
+        }
+
+        spannable.getSpans(0, spannable.length, TableScaleSpan::class.java).forEach {
+            spannable.removeSpan(it)
+        }
+
+        spannable.getSpans(0, spannable.length, TableSpan::class.java).forEach { table ->
+            val start = spannable.getSpanStart(table)
+            val end = spannable.getSpanEnd(table)
+
+            val scale = fittingScale(spannable, rows(spannable, start, end), available.toFloat())
+
+            if (scale < 1f) {
+                spannable.setSpan(TableScaleSpan(scale), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+    }
+
+    private fun fittingScale(text: CharSequence, rows: List<Pair<Int, Int>>, available: Float): Float {
+        val scaledPaint = TextPaint(paint)
+
+        fun widestRowAt(scale: Float): Float {
+            scaledPaint.textSize = paint.textSize * scale
+            return rows.maxOf { (rowStart, rowEnd) -> Layout.getDesiredWidth(text, rowStart, rowEnd, scaledPaint) }
+        }
+
+        var scale = tableScale(widestRowAt(1f), available)
+
+        // Glyph widths are rounded at each text size, so a row can measure wider than its scale implies.
+        while (scale > MIN_TABLE_SCALE) {
+            val widest = widestRowAt(scale)
+
+            if (widest <= available) {
+                break
+            }
+
+            scale = maxOf(MIN_TABLE_SCALE, minOf(scale - 0.01f, scale * available / widest))
+        }
+
+        return scale
+    }
+
+    private fun rows(text: CharSequence, start: Int, end: Int): List<Pair<Int, Int>> {
+        val rows = mutableListOf<Pair<Int, Int>>()
+        var rowStart = start
+
+        for (i in start until end) {
+            if (text[i] == '\n') {
+                rows.add(rowStart to i)
+                rowStart = i + 1
+            }
+        }
+
+        rows.add(rowStart to end)
+
+        return rows
+    }
 
     fun activate() {
         visibility = View.VISIBLE

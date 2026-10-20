@@ -38,6 +38,8 @@ object OrgFormatter {
 
     private const val MARKUP_CHARS = "*/_=~+"
 
+    private const val MARKER_PAIR_LENGTH = 2
+
     private val MARKUP_PATTERN = Pattern.compile(
             "(?:^|\\G|[$PRE])(([$MARKUP_CHARS])($BORDER|$BORDER$BODY$BORDER)\\2)(?:[$POST]|$)",
             Pattern.MULTILINE)
@@ -55,6 +57,8 @@ object OrgFormatter {
     private val LOGBOOK_DRAWER_PATTERN = drawerPattern(LOGBOOK_DRAWER_NAME)
 
     private const val PLAIN_LIST_CHARS = "-\\+"
+    private val TABLE_PATTERN = Pattern.compile("""^[ \t]*\|.*(?:\n[ \t]*\|.*)*""", Pattern.MULTILINE)
+
     private val CHECKBOXES_PATTERN = Pattern.compile("""^\s*[$PLAIN_LIST_CHARS]\s+(\[[ -X]])""", Pattern.MULTILINE)
 
     private const val INACTIVE_DATETIME = "(\\[[0-9]{4,}-[0-9]{2}-[0-9]{2} ?[^\\]\\r\\n>]*?[0-9]{1,2}:[0-9]{2}\\])"
@@ -108,6 +112,9 @@ object OrgFormatter {
         }
 
         ssb = parseLinks(config, ssb)
+
+        /* Before markup, which keeps the markers inside tables. */
+        parseTables(ssb)
 
         ssb = parseMarkup(ssb, config)
 
@@ -246,14 +253,14 @@ object OrgFormatter {
         return found
     }
 
-    private fun newSpan(type: SpanType): CharacterStyle {
+    private fun newSpan(type: SpanType, characterOffset: Int): CharacterStyle {
         return when (type) {
-            SpanType.BOLD -> BoldSpan()
-            SpanType.ITALIC -> ItalicSpan()
-            SpanType.UNDERLINE -> UnderlinedSpan()
-            SpanType.VERBATIM -> VerbatimSpan()
-            SpanType.CODE -> CodeSpan()
-            SpanType.STRIKETHROUGH -> StrikeSpan()
+            SpanType.BOLD -> BoldSpan(characterOffset)
+            SpanType.ITALIC -> ItalicSpan(characterOffset)
+            SpanType.UNDERLINE -> UnderlinedSpan(characterOffset)
+            SpanType.VERBATIM -> VerbatimSpan(characterOffset)
+            SpanType.CODE -> CodeSpan(characterOffset)
+            SpanType.STRIKETHROUGH -> StrikeSpan(characterOffset)
         }
     }
 
@@ -271,16 +278,22 @@ object OrgFormatter {
             val start = matcher.start(1)
             val end = matcher.end(1)
 
-            if (config.withMarks) {
+            if (overlapsTable(ssb, start, end)) {
+                // Kept markers make a row as wide as the file's padding assumes.
                 spanTypes(str) { type ->
-                    ssb.setSpan(newSpan(type), start, end, FLAGS)
+                    ssb.setSpan(newSpan(type, 0), start, end, FLAGS)
+                }
+
+            } else if (config.withMarks) {
+                spanTypes(str) { type ->
+                    ssb.setSpan(newSpan(type, MARKER_PAIR_LENGTH), start, end, FLAGS)
                 }
 
             } else {
                 val spans = mutableListOf<CharacterStyle>()
 
                 val found = spanTypes(str) {
-                    spans.add(newSpan(it))
+                    spans.add(newSpan(it, MARKER_PAIR_LENGTH))
                 }
 
                 // Content only, without markers
@@ -298,6 +311,20 @@ object OrgFormatter {
         }
 
         return buildFromRegions(ssb, spanRegions)
+    }
+
+    private fun parseTables(ssb: SpannableStringBuilder) {
+        val m = TABLE_PATTERN.matcher(ssb)
+
+        while (m.find()) {
+            ssb.setSpan(TableSpan(), m.start(), m.end(), FLAGS)
+        }
+    }
+
+    private fun overlapsTable(ssb: Spanned, start: Int, end: Int): Boolean {
+        return ssb.getSpans(start, end, TableSpan::class.java).any { span ->
+            ssb.getSpanStart(span) < end && ssb.getSpanEnd(span) > start
+        }
     }
 
     /**
