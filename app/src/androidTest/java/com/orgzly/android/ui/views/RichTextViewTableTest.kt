@@ -1,15 +1,19 @@
 package com.orgzly.android.ui.views
 
 import android.graphics.Typeface
+import android.os.SystemClock
 import android.text.SpannableString
 import android.text.Spanned
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.test.platform.app.InstrumentationRegistry
+import com.orgzly.android.ui.views.richtext.ActionableRichTextView
 import com.orgzly.android.ui.views.richtext.RichTextView
+import com.orgzly.android.ui.views.style.CheckboxSpan
+import com.orgzly.android.ui.views.style.DrawerMarkerSpan
 import com.orgzly.android.ui.views.style.MIN_TABLE_SCALE
-import com.orgzly.android.ui.views.style.TableOpenSpan
 import com.orgzly.android.ui.views.style.TableRowClipSpan
 import com.orgzly.android.ui.views.style.TableScaleSpan
 import com.orgzly.android.ui.views.style.TableSpan
@@ -147,10 +151,7 @@ class RichTextViewTableTest {
 
             assertEquals(1, view.lineCount(wide))
             assertEquals(1, view.spansOn<TableRowClipSpan>(wide).size)
-            assertEquals(1, view.spansOn<TableOpenSpan>(wide).size)
-
             assertEquals(0, view.spansOn<TableRowClipSpan>(narrow).size)
-            assertEquals(0, view.spansOn<TableOpenSpan>(narrow).size)
         }
     }
 
@@ -193,7 +194,6 @@ class RichTextViewTableTest {
 
             assertEquals(0, copy.getSpans(0, copy.length, TableScaleSpan::class.java).size)
             assertEquals(0, copy.getSpans(0, copy.length, TableRowClipSpan::class.java).size)
-            assertEquals(0, copy.getSpans(0, copy.length, TableOpenSpan::class.java).size)
             assertEquals(1, copy.getSpans(0, copy.length, TableSpan::class.java).size)
         }
     }
@@ -203,6 +203,76 @@ class RichTextViewTableTest {
         onView({ row(it, 1.3f) + "\ntext\n" + row(it, 1.5f) }) { view ->
             view.fitTables()
             assertEquals(2, view.scales().size)
+        }
+    }
+
+    /** Taps the line holding [offset], just right of that character's start or at [x]. */
+    private fun RichTextView.tap(offset: Int, x: Float = layout.getPrimaryHorizontal(offset) + totalPaddingLeft + 1) {
+        val line = layout.getLineForOffset(offset)
+        val y = (layout.getLineTop(line) + layout.getLineBottom(line)) / 2f + totalPaddingTop
+        val time = SystemClock.uptimeMillis()
+
+        dispatchTouchEvent(MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, x, y, 0))
+        dispatchTouchEvent(MotionEvent.obtain(time, time + 50, MotionEvent.ACTION_UP, x, y, 0))
+    }
+
+    private fun RichTextView.tappedTables(): MutableList<TableSpan> =
+        mutableListOf<TableSpan>().also { tapped -> setOnTableTapListener { tapped.add(it) } }
+
+    private fun RichTextView.table(): TableSpan =
+        (text as Spanned).getSpans(0, text.length, TableSpan::class.java).single()
+
+    @Test
+    fun testTapOnARowDrawnInFullOpensItsTable() {
+        onView({ "Intro\n| a |\n| b |\nOutro" }) { view ->
+            val tapped = view.tappedTables()
+
+            view.tap(view.text.indexOf("b"))
+
+            assertEquals(listOf(view.table()), tapped)
+        }
+    }
+
+    @Test
+    fun testTapOnACutOffRowOpensItsTable() {
+        onView({ row(it, 3f) }) { view ->
+            val tapped = view.tappedTables()
+
+            view.tap(2, x = width / 2f)
+
+            assertEquals(listOf(view.table()), tapped)
+        }
+    }
+
+    @Test
+    fun testTapOutsideTablesOpensNone() {
+        onView({ "Intro\n| a |\nOutro" }) { view ->
+            val tapped = view.tappedTables()
+
+            view.tap(view.text.indexOf("Outro") + 1)
+            view.tap(1)
+
+            assertEquals(emptyList<TableSpan>(), tapped)
+        }
+    }
+
+    @Test
+    fun testTapOnALinkInARowDrawnInFullFollowsTheLink() {
+        onView({ "| [[id:abc][link]] |" }) { view ->
+            val tapped = view.tappedTables()
+            val followed = mutableListOf<String>()
+
+            view.setOnActionListener(object : ActionableRichTextView {
+                override fun toggleDrawer(markerSpan: DrawerMarkerSpan) {}
+                override fun toggleCheckbox(checkboxSpan: CheckboxSpan) {}
+                override fun followLinkToNoteOrBookWithProperty(name: String, value: String) { followed.add(value) }
+                override fun followLinkToFile(path: String) {}
+            })
+
+            view.tap(view.text.indexOf("link") + 1)
+
+            assertEquals(listOf("abc"), followed)
+            assertEquals(emptyList<TableSpan>(), tapped)
         }
     }
 }

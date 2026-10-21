@@ -14,12 +14,9 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.StaticLayout
 import android.text.TextPaint
-import android.text.style.ClickableSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.ReplacementSpan
 import android.text.style.TypefaceSpan
-import android.view.View
-import com.orgzly.android.ui.views.richtext.RichTextView
 import com.orgzly.android.util.tableRanges
 import kotlin.math.ceil
 
@@ -119,19 +116,24 @@ class TableRowClipSpan(private val maxWidth: Int) : ReplacementSpan() {
     }
 }
 
-/** Opens [table] in full when one of its cut-off rows is tapped. */
-class TableOpenSpan(private val table: TableSpan) : ClickableSpan() {
-    override fun onClick(widget: View) {
-        (widget as? RichTextView)?.openTable(table)
-    }
-
-    override fun updateDrawState(ds: TextPaint) {
+/** Removes the spans that fit tables to a view's width, leaving each table at its normal size. */
+fun removeTableFitting(text: Spannable) {
+    listOf(TableScaleSpan::class.java, TableRowClipSpan::class.java).forEach { kind ->
+        text.getSpans(0, text.length, kind).forEach { text.removeSpan(it) }
     }
 }
 
-/** Removes the spans that fit tables to a view's width, leaving each table at its normal size. */
-fun removeTableFitting(text: Spannable) {
-    listOf(TableScaleSpan::class.java, TableRowClipSpan::class.java, TableOpenSpan::class.java).forEach { kind ->
-        text.getSpans(0, text.length, kind).forEach { text.removeSpan(it) }
+/** The table whose rows hold [offset], if any. */
+fun Spanned.tableAt(offset: Int): TableSpan? =
+    getSpans(offset, offset, TableSpan::class.java).firstOrNull { offset >= getSpanStart(it) && offset < getSpanEnd(it) }
+
+/** [table]'s text at its normal size, or null when [table] is not in this text. */
+fun Spanned.tableText(table: TableSpan): SpannableString? {
+    val start = getSpanStart(table)
+
+    if (start < 0) {
+        return null
     }
+
+    return SpannableString(subSequence(start, getSpanEnd(table))).also(::removeTableFitting)
 }
