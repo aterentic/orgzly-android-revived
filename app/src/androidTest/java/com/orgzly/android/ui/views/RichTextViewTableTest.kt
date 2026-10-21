@@ -11,6 +11,7 @@ import android.widget.TextView
 import androidx.test.platform.app.InstrumentationRegistry
 import com.orgzly.android.ui.views.richtext.ActionableRichTextView
 import com.orgzly.android.ui.views.richtext.RichTextView
+import com.orgzly.android.ui.views.richtext.fitTables
 import com.orgzly.android.ui.views.style.CheckboxSpan
 import com.orgzly.android.ui.views.style.DrawerMarkerSpan
 import com.orgzly.android.ui.views.style.MIN_TABLE_SCALE
