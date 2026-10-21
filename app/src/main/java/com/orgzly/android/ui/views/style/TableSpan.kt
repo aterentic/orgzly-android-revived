@@ -20,22 +20,17 @@ import android.text.style.ReplacementSpan
 import android.text.style.TypefaceSpan
 import android.view.View
 import com.orgzly.android.ui.views.richtext.RichTextView
-import java.util.regex.Pattern
+import com.orgzly.android.util.tableRanges
 import kotlin.math.ceil
 
 class TableSpan : TypefaceSpan("monospace")
-
-// The newline ending the last row belongs to the table, because it sets that line's height.
-private val TABLE_PATTERN = Pattern.compile("""^[ \t]*\|.*(?:\n[ \t]*\|.*)*\n?""", Pattern.MULTILINE)
 
 /** Marks each run of org table lines in [text] with a [TableSpan], replacing the ones it had. */
 fun markTables(text: Spannable) {
     text.getSpans(0, text.length, TableSpan::class.java).forEach { text.removeSpan(it) }
 
-    val m = TABLE_PATTERN.matcher(text)
-
-    while (m.find()) {
-        text.setSpan(TableSpan(), m.start(), m.end(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    tableRanges(text).forEach { range ->
+        text.setSpan(TableSpan(), range.first, range.last + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
 }
 
