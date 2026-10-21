@@ -14,6 +14,8 @@
     <string name="set">Set</string>
     <string name="not_now">Not now</string>
     <string name="save">Save</string>
+    <string name="edit">Edit</string>
+    <string name="table_not_saved_note_changed">The note changed meanwhile, so the table was not saved</string>
     <string name="discard">Discard</string>
     <string name="remove_notebook_link">Remove link</string>
     <string name="browse">Browse</string>
