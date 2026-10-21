@@ -28,6 +28,7 @@ import com.orgzly.android.ui.views.style.TableSpan
 import com.orgzly.android.ui.views.style.tableText
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.util.OrgFormatter
+import com.orgzly.android.util.SourceTable
 import com.orgzly.android.util.findSourceTable
 import com.orgzly.android.util.replaceOrgTable
 
@@ -117,6 +118,10 @@ class RichText(context: Context, attrs: AttributeSet?) :
                 if (!hasFocus) {
                     toViewMode(true)
                 }
+            }
+
+            setOnTableTapListener { table ->
+                editTable(table)
             }
         }
 
@@ -326,6 +331,33 @@ class RichText(context: Context, attrs: AttributeSet?) :
                 Toast.makeText(context, R.string.table_not_saved_note_changed, Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    /** Edits [table] from the editor, whose text is the source, and puts the cursor after it. */
+    private fun editTable(table: TableSpan) {
+        val editable = richTextEdit.text ?: return
+        val start = editable.getSpanStart(table)
+
+        if (start < 0) {
+            return
+        }
+
+        val end = editable.getSpanEnd(table)
+        val sourceTable = SourceTable(start until end, editable.substring(start, end))
+
+        val edit = TableEdit(sourceTable.text) { edited ->
+            val current = richTextEdit.text
+
+            if (current != null && sourceTable.isIn(current)) {
+                val replacement = sourceTable.replacement(edited)
+                current.replace(start, end, replacement)
+                richTextEdit.setSelection(start + replacement.length)
+            } else {
+                Toast.makeText(context, R.string.table_not_saved_note_changed, Toast.LENGTH_LONG).show()
+            }
+        }
+
+        showTableDialog(context, richTextEdit.textSize, TableDialogContent.Editing(edit))
     }
 
     override fun toggleCheckbox(checkboxSpan: CheckboxSpan) {
