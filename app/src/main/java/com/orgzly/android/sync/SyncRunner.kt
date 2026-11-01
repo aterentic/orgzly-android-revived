@@ -17,6 +17,7 @@ import com.orgzly.android.App
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.ui.showSnackbar
 import com.orgzly.android.util.LogUtils
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 object SyncRunner {
@@ -24,7 +25,13 @@ object SyncRunner {
 
     private val TAG: String = SyncRunner::class.java.name
 
-    private const val UNIQUE_WORK_NAME = "sync"
+    internal const val UNIQUE_WORK_NAME = "sync"
+
+    private const val AUTO_SYNC_TAG = "auto-sync"
+
+    // Serialized so that two triggers cannot both see a running sync and both append,
+    // and so that a stop cannot be overtaken by a start requested before it.
+    private val enqueueExecutor = Executors.newSingleThreadExecutor()
 
     @JvmStatic
     fun startAuto() {
@@ -60,11 +67,55 @@ object SyncRunner {
             // when handling notification manually from the worker.
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .setInputData(workDataOf(IS_AUTO_SYNC to autoSync))
+            .apply { if (autoSync) addTag(AUTO_SYNC_TAG) }
             .build()
 
-        workManager
-            .beginUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, syncWorker)
-            .enqueue()
+        val origin = if (autoSync) SyncOrigin.AUTO else SyncOrigin.MANUAL
+
+        enqueueExecutor.execute {
+            val existing = workManager.getWorkInfosForUniqueWork(UNIQUE_WORK_NAME).get().map {
+                QueuedSync(it.state, if (AUTO_SYNC_TAG in it.tags) SyncOrigin.AUTO else SyncOrigin.MANUAL)
+            }
+            val request = SyncRequest.forExisting(existing, origin)
+
+            if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, existing, origin, request)
+
+            request.policy?.let { policy ->
+                workManager.beginUniqueWork(UNIQUE_WORK_NAME, policy, syncWorker).enqueue()
+            }
+        }
+    }
+
+    internal enum class SyncOrigin {
+        MANUAL,
+        AUTO;
+
+        // An auto sync stops early for repositories without auto-sync support, so it cannot stand in for a manual one.
+        fun covers(request: SyncOrigin) = this == MANUAL || request == AUTO
+    }
+
+    internal data class QueuedSync(val state: WorkInfo.State, val origin: SyncOrigin)
+
+    /**
+     * How a new sync request joins the syncs already queued.
+     */
+    internal enum class SyncRequest(val policy: ExistingWorkPolicy?) {
+        /** Nothing runs. A waiting sync is usually a killed one sitting out its retry backoff. */
+        START_NOW(ExistingWorkPolicy.REPLACE),
+
+        /** A sync runs, and changes made since it started need one more. Skipped if the running one fails. */
+        AFTER_RUNNING(ExistingWorkPolicy.APPEND_OR_REPLACE),
+
+        /** A sync runs, and one that covers this request is already queued behind it. */
+        ALREADY_QUEUED(null);
+
+        companion object {
+            fun forExisting(existing: Collection<QueuedSync>, origin: SyncOrigin): SyncRequest = when {
+                existing.none { it.state == WorkInfo.State.RUNNING } -> START_NOW
+                existing.any { it.state == WorkInfo.State.BLOCKED && it.origin.covers(origin) } -> ALREADY_QUEUED
+                else -> AFTER_RUNNING
+            }
+        }
     }
 
     @JvmStatic
@@ -84,7 +135,9 @@ object SyncRunner {
     @JvmStatic
     fun stopSync() {
         val workManager = WorkManager.getInstance(App.getAppContext())
-        workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
+        enqueueExecutor.execute {
+            workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
+        }
     }
 
     @JvmStatic
@@ -121,26 +174,23 @@ object SyncRunner {
             .getWorkInfosForUniqueWorkLiveData(UNIQUE_WORK_NAME)
     }
 
-    private fun syncStateFromWorkInfoList(workInfoList: List<WorkInfo>): SyncState? {
-        if (workInfoList.isEmpty()) {
-            return null
+    internal fun syncStateFromWorkInfoList(workInfoList: List<WorkInfo>): SyncState? {
+        // A sync queued behind a running one stays BLOCKED until that one ends.
+        val active = workInfoList.firstOrNull { it.state == WorkInfo.State.RUNNING }
+            ?: workInfoList.firstOrNull { it.state == WorkInfo.State.ENQUEUED }
+
+        if (active != null) {
+            return SyncState.fromData(active.progress)
+                ?: SyncState.getInstance(SyncState.Type.STARTING)
         }
 
-        val oneAndOnlyWorker = workInfoList.first()
-
-        oneAndOnlyWorker.run {
-            if (state == WorkInfo.State.CANCELLED) {
-                return SyncState.getInstance(SyncState.Type.CANCELED)
-
-            } else if (state == WorkInfo.State.RUNNING || state == WorkInfo.State.ENQUEUED) {
-                return SyncState.fromData(progress)
-                    ?: SyncState.getInstance(SyncState.Type.STARTING)
-
-            } else if (state.isFinished) {
-                return SyncState.fromData(outputData)
-            }
+        if (workInfoList.any { it.state == WorkInfo.State.CANCELLED }) {
+            return SyncState.getInstance(SyncState.Type.CANCELED)
         }
 
-        return null
+        // A follow-up fails with no output when the sync before it fails.
+        val finished = workInfoList.mapNotNull { SyncState.fromData(it.outputData) }
+
+        return finished.firstOrNull { it.isFailure() } ?: finished.firstOrNull()
     }
 }
