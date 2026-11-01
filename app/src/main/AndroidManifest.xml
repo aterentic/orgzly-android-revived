@@ -186,6 +186,20 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".android.ui.SavedSearchChooserActivity"
+            android:label="@string/saved_search_shortcut_label"
+            android:icon="@mipmap/cic_shortcut_search"
+            android:theme="@style/Theme.Material3.DayNight.Dialog.Alert"
+            android:excludeFromRecents="true"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".android.widgets.ListWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"

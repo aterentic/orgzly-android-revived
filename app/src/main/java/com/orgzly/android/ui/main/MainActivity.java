@@ -193,6 +193,7 @@ public class MainActivity extends CommonActivity
         if (savedInstanceState == null) { // Not a configuration change.
             long bookId = getIntent().getLongExtra(AppIntent.EXTRA_BOOK_ID, 0L);
             long noteId = getIntent().getLongExtra(AppIntent.EXTRA_NOTE_ID, 0L);
+            long savedSearchId = getIntent().getLongExtra(AppIntent.EXTRA_SAVED_SEARCH_ID, 0L);
             String queryString = getIntent().getStringExtra(AppIntent.EXTRA_QUERY_STRING);
             boolean isRawQuery = getIntent().getBooleanExtra(AppIntent.EXTRA_IS_RAW_QUERY, false);
 
@@ -206,6 +207,9 @@ public class MainActivity extends CommonActivity
                 if (noteId > 0) {
                     DisplayManager.displayExistingNote(getSupportFragmentManager(), bookId, noteId);
                 }
+            } else if (savedSearchId > 0) {
+                displaySavedSearch(savedSearchId);
+
             } else if (queryString != null) {
                 DisplayManager.displayQuery(
                         getSupportFragmentManager(),
@@ -220,6 +224,23 @@ public class MainActivity extends CommonActivity
                 handleDeepLinkIntent(getIntent());
             }
         }
+    }
+
+    private void displaySavedSearch(long savedSearchId) {
+        SavedSearch savedSearch = dataRepository.getSavedSearch(savedSearchId);
+
+        if (savedSearch == null) {
+            AppSnackbarUtils.showSnackbar(this, R.string.saved_search_does_not_exist_anymore);
+            return;
+        }
+
+        DisplayManager.displayQuery(
+                getSupportFragmentManager(),
+                new DisplayManager.DisplayQueryArgs(savedSearch.getQuery())
+                        .setRawQuery(true)
+                        .setForceHideRefineButton(true)
+                        .setSearchName(savedSearch.getName())
+        );
     }
 
     @Override
