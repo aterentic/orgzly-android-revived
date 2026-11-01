@@ -13,6 +13,7 @@ import android.util.TypedValue
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.view.isVisible
 import com.orgzly.BuildConfig
 import com.orgzly.R
@@ -23,8 +24,13 @@ import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.ui.views.style.CheckboxSpan
 import com.orgzly.android.ui.views.style.DrawerMarkerSpan
 import com.orgzly.android.ui.views.style.DrawerSpan
+import com.orgzly.android.ui.views.style.TableSpan
+import com.orgzly.android.ui.views.style.tableText
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.util.OrgFormatter
+import com.orgzly.android.util.SourceTable
+import com.orgzly.android.util.findSourceTable
+import com.orgzly.android.util.replaceOrgTable
 
 class RichText(context: Context, attrs: AttributeSet?) :
     FrameLayout(context, attrs), ActionableRichTextView {
@@ -113,6 +119,10 @@ class RichText(context: Context, attrs: AttributeSet?) :
                     toViewMode(true)
                 }
             }
+
+            setOnTableTapListener { table ->
+                editTable(table)
+            }
         }
 
         richTextView.apply {
@@ -130,6 +140,10 @@ class RichText(context: Context, attrs: AttributeSet?) :
                 if (attributes.editable) {
                     toEditMode(charOffset)
                 }
+            }
+
+            setOnTableTapListener { table ->
+                openTable(table)
             }
 
             setOnActionListener(this@RichText)
@@ -223,6 +237,8 @@ class RichText(context: Context, attrs: AttributeSet?) :
 
             richTextView.setText(parsed, TextView.BufferType.SPANNABLE)
 
+            richTextView.fitTables()
+
             ImageLoader.loadImages(richTextView)
 
         } else {
@@ -285,6 +301,63 @@ class RichText(context: Context, attrs: AttributeSet?) :
         builder.replace(drawerStart, drawerEnd, replacement)
 
         richTextView.text = builder
+    }
+
+    private fun openTable(table: TableSpan) {
+        val shown = richTextView.text as? Spanned ?: return
+        val display = shown.tableText(table) ?: return
+
+        showTableDialog(context, richTextView.textSize, TableDialogContent.Viewing(display, this, tableEdit(shown, table)))
+    }
+
+    /** How to edit [table] from view mode, or null when the note can't change here or the source table is unclear. */
+    private fun tableEdit(shown: Spanned, table: TableSpan): TableEdit? {
+        val listener = listeners.onUserTextChange ?: return null
+        val source = richTextEdit.text?.toString() ?: return null
+        val tables = shown.getSpans(0, shown.length, TableSpan::class.java).sortedBy { shown.getSpanStart(it) }
+
+        val sourceTable = findSourceTable(source, tables.map { shown.tableText(it).toString() }, tables.indexOf(table)) { text ->
+            OrgFormatter.parse(text, context, attributes.linkify, attributes.parseCheckboxes).toString()
+        } ?: return null
+
+        return TableEdit(sourceTable.text) { edited ->
+            val newSource = replaceOrgTable(richTextEdit.text?.toString().orEmpty(), sourceTable, edited)
+
+            if (newSource != null) {
+                // Shown before the host stores it, which in a list happens later, so a next edit starts from it.
+                setSourceText(newSource)
+                listener.onUserTextChange(newSource)
+            } else {
+                Toast.makeText(context, R.string.table_not_saved_note_changed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** Edits [table] from the editor, whose text is the source, and puts the cursor after it. */
+    private fun editTable(table: TableSpan) {
+        val editable = richTextEdit.text ?: return
+        val start = editable.getSpanStart(table)
+
+        if (start < 0) {
+            return
+        }
+
+        val end = editable.getSpanEnd(table)
+        val sourceTable = SourceTable(start until end, editable.substring(start, end))
+
+        val edit = TableEdit(sourceTable.text) { edited ->
+            val current = richTextEdit.text
+
+            if (current != null && sourceTable.isIn(current)) {
+                val replacement = sourceTable.replacement(edited)
+                current.replace(start, end, replacement)
+                richTextEdit.setSelection(start + replacement.length)
+            } else {
+                Toast.makeText(context, R.string.table_not_saved_note_changed, Toast.LENGTH_LONG).show()
+            }
+        }
+
+        showTableDialog(context, richTextEdit.textSize, TableDialogContent.Editing(edit))
     }
 
     override fun toggleCheckbox(checkboxSpan: CheckboxSpan) {
