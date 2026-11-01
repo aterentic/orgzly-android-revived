@@ -21,6 +21,9 @@ import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.ui.views.style.CheckboxSpan
 import com.orgzly.android.ui.views.style.DrawerMarkerSpan
 import com.orgzly.android.ui.views.style.Offsetting
+import com.orgzly.android.ui.views.style.TableRowClipSpan
+import com.orgzly.android.ui.views.style.TableSpan
+import com.orgzly.android.ui.views.style.tableAt
 import com.orgzly.android.util.LogUtils
 
 class RichTextView : AppCompatTextView, ActionableRichTextView {
@@ -29,14 +32,23 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
         fun onTapUp(x: Float, y: Float, charOffset: Int)
     }
 
+    fun interface OnTableTapListener {
+        fun onTableTap(table: TableSpan)
+    }
+
     private data class Listeners(
         var onTapUp: OnTapUpListener? = null,
+        var onTableTap: OnTableTapListener? = null,
         var onActionListener: ActionableRichTextView? = null)
 
     private val listeners = Listeners()
 
     fun setOnTapUpListener(listener: OnTapUpListener) {
         listeners.onTapUp = listener
+    }
+
+    fun setOnTableTapListener(listener: OnTableTapListener) {
+        listeners.onTableTap = listener
     }
 
     fun setOnActionListener(listener: ActionableRichTextView) {
@@ -109,6 +121,33 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
         return null
     }
 
+    /** Hands a tap on a table row to the table listener, unless it lands on a link in a row drawn in full. */
+    private fun interceptTableTap(event: MotionEvent): Boolean? {
+        val listener = listeners.onTableTap ?: return null
+        val spanned = text as? Spanned ?: return null
+        val layout = layout ?: return null
+        val line = layout.getLineForVertical(event.y.toInt() - totalPaddingTop)
+
+        if (!isEventOnText(event, layout, line)) {
+            return null
+        }
+
+        // The line's start, because a tap on a drawn row can map to the offset just past the table.
+        val table = spanned.tableAt(layout.getLineStart(line)) ?: return null
+        val offset = getOffsetForPosition(event.x, event.y)
+        val cutOff = spanned.getSpans(offset, offset, TableRowClipSpan::class.java).isNotEmpty()
+
+        if (!cutOff && spanned.getSpans(offset, offset, ClickableSpan::class.java).isNotEmpty()) {
+            return null
+        }
+
+        if (event.action == MotionEvent.ACTION_UP) {
+            listener.onTableTap(table)
+        }
+
+        return true
+    }
+
     /**
      * Check if event's coordinates are within line's text.
      *
@@ -128,6 +167,10 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        interceptTableTap(event)?.let { handled ->
+            return handled
+        }
+
         interceptClickableSpan(event)?.let { handled ->
             // if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "ClickableSpan intercepted")
             return handled
@@ -170,6 +213,14 @@ class RichTextView : AppCompatTextView, ActionableRichTextView {
         return spansChars
     }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+
+        if (w != oldw) {
+            // A span change requests a layout, which must not happen inside this one.
+            post { fitTables() }
+        }
+    }
 
     fun activate() {
         visibility = View.VISIBLE
